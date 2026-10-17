@@ -1,6 +1,6 @@
 # Implate Flow
 
-Prontuário na nuvem para um implantodontista acompanhar implantes, enxertos, retornos e a procedência de cada peça. A primeira versão é um aplicativo Flutter. A mesma API atende a versão web depois.
+Prontuário na nuvem para um implantodontista acompanhar implantes, enxertos, retornos e a procedência de cada peça. Este repositório é o aplicativo Flutter para Android e iOS. A API e a versão web ficam em outros repositórios.
 
 O dentista entra com a própria conta e vê os dados em mais de um aparelho. O paciente não acessa o sistema. Clínica com equipe e SSO ficam para a versão seguinte.
 
