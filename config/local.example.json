@@ -1,0 +1,4 @@
+{
+  "WORKOS_CLIENT_ID": "client_...",
+  "WORKOS_REDIRECT_URI": "br.com.implateflow://auth/callback"
+}
