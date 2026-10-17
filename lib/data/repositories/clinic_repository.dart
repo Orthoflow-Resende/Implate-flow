@@ -1,0 +1,52 @@
+import '../../domain/clinic_snapshot.dart';
+import '../../domain/models.dart';
+
+abstract class ClinicRepository {
+  Stream<ClinicSnapshot> watch();
+
+  ClinicSnapshot get current;
+
+  List<String> get delayNoticeFollowUpIds;
+
+  void applyOverdueNotices();
+
+  void signIn({required String name, required String email});
+
+  void signOut();
+
+  Patient createPatient({
+    required String name,
+    required String phone,
+    String cpf = '',
+    required DateTime birthDate,
+    String notes = '',
+    String guardian = '',
+  });
+
+  void updatePatient(Patient patient);
+
+  void saveProcedures(List<Procedure> created);
+
+  void updateProcedure(Procedure procedure);
+
+  void addPhoto(String procedureId, ClinicPhoto photo);
+
+  void addVisit({
+    required String procedureId,
+    required String note,
+    required String statusLabel,
+  });
+
+  void completeFollowUp({
+    required String followUpId,
+    required String note,
+    required String statusLabel,
+    required ReturnStatus returnStatus,
+  });
+
+  void issueCertificate(String procedureId, {String? pdfPath});
+
+  void updateProfile(DentistProfile profile);
+
+  String allocateId(String prefix);
+}

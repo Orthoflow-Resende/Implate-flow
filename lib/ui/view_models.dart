@@ -1,0 +1,329 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:printing/printing.dart';
+
+import '../config/app_config.dart';
+import '../data/repositories/clinic_repository.dart';
+import '../data/services/clinic_files.dart';
+import '../data/services/clinic_pdfs.dart';
+import '../data/services/workos_auth.dart';
+import '../domain/clinic_snapshot.dart';
+import '../domain/models.dart';
+import '../domain/queries.dart';
+
+class RepositoryViewModel extends ChangeNotifier {
+  RepositoryViewModel(this.repository) {
+    _subscription = repository.watch().listen((next) {
+      snapshot = next;
+      notifyListeners();
+    });
+  }
+
+  final ClinicRepository repository;
+  late ClinicSnapshot snapshot = repository.current;
+  late final StreamSubscription<ClinicSnapshot> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
+
+class SessionViewModel extends RepositoryViewModel {
+  SessionViewModel(super.repository, this.auth);
+
+  final WorkOsAuth auth;
+  bool busy = false;
+  String? error;
+
+  bool get signedIn => snapshot.signedIn;
+
+  Future<void> signIn() async {
+    if (busy) return;
+    if (AppConfig.workOsClientId.isEmpty) {
+      error = 'Preencha WORKOS_CLIENT_ID em config/local.json.';
+      notifyListeners();
+      return;
+    }
+    busy = true;
+    error = null;
+    notifyListeners();
+    try {
+      final identity = await auth.signIn(
+        clientId: AppConfig.workOsClientId,
+        redirectUri: AppConfig.workOsRedirectUri,
+      );
+      repository.signIn(name: identity.name, email: identity.email);
+    } on WorkOsAuthException catch (error) {
+      this.error = error.message;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> signOut() async {
+    if (busy) return;
+    busy = true;
+    error = null;
+    notifyListeners();
+    try {
+      await auth.signOut(redirectUri: AppConfig.workOsRedirectUri);
+    } on WorkOsAuthException {
+      // The local session still ends so the dentist returns to login.
+    } finally {
+      repository.signOut();
+      busy = false;
+      notifyListeners();
+    }
+  }
+}
+
+class HomeViewModel extends RepositoryViewModel {
+  HomeViewModel(super.repository) {
+    repository.applyOverdueNotices();
+  }
+
+  DentistProfile get profile => snapshot.profile;
+
+  List<FollowUp> _scheduledOn(bool Function(DateTime day) test) {
+    return scheduledFollowUps(snapshot.procedures).where((item) => test(dateOnly(item.date))).toList();
+  }
+
+  List<FollowUp> get overdue =>
+      _scheduledOn((day) => day.isBefore(dateOnly(DateTime.now())));
+
+  List<FollowUp> get today =>
+      _scheduledOn((day) => sameDay(day, dateOnly(DateTime.now())));
+
+  List<FollowUp> get nextWeek {
+    final start = dateOnly(DateTime.now());
+    final end = start.add(const Duration(days: 7));
+    return _scheduledOn((day) => day.isAfter(start) && !day.isAfter(end));
+  }
+
+  Procedure? procedureOf(String followUpId) =>
+      procedureOfFollowUp(snapshot.procedures, followUpId);
+
+  Patient patientOf(String patientId) =>
+      snapshot.patients.firstWhere((patient) => patient.id == patientId);
+
+  List<FollowUp> get todayReminders {
+    if (!profile.reminderEnabled) return const [];
+    return today.where((item) => item.reminderEnabled).toList();
+  }
+
+  List<FollowUp> get delayNotices {
+    final ids = repository.delayNoticeFollowUpIds;
+    return [
+      for (final procedure in snapshot.procedures)
+        for (final followUp in procedure.followUps)
+          if (ids.contains(followUp.id)) followUp,
+    ];
+  }
+
+  List<Patient> patientsMatching(String query) => matchPatients(snapshot.patients, query);
+}
+
+class PatientsViewModel extends RepositoryViewModel {
+  PatientsViewModel(super.repository);
+
+  String query = '';
+
+  List<Patient> get patients => matchPatients(snapshot.patients, query);
+
+  int implantCount(String patientId) => implantsOf(snapshot.procedures, patientId).length;
+
+  void setQuery(String value) {
+    query = value;
+    notifyListeners();
+  }
+
+  Patient createPatient({
+    required String name,
+    required String phone,
+    String cpf = '',
+    required DateTime birthDate,
+    String notes = '',
+    String guardian = '',
+  }) {
+    return repository.createPatient(
+      name: name,
+      phone: phone,
+      cpf: cpf,
+      birthDate: birthDate,
+      notes: notes,
+      guardian: guardian,
+    );
+  }
+}
+
+class PatientViewModel extends RepositoryViewModel {
+  PatientViewModel(super.repository, {required this.patientId});
+
+  final String patientId;
+
+  Patient get patient => snapshot.patients.firstWhere((item) => item.id == patientId);
+
+  List<Procedure> get history => proceduresOf(snapshot.procedures, patientId);
+
+  List<FollowUp> get upcoming => upcomingOf(snapshot.procedures, patientId);
+
+  Procedure? procedureOf(String followUpId) =>
+      procedureOfFollowUp(snapshot.procedures, followUpId);
+
+  List<({DateTime date, String title, String detail, String? procedureId})> get timeline {
+    return [
+      for (final procedure in history) ...[
+        (
+          date: procedure.surgeryDate,
+          title: 'Cirurgia',
+          detail: '${modalityLabel(procedure.modality)} · ${procedure.teethLabel}',
+          procedureId: procedure.id,
+        ),
+        for (final visit in procedure.visits)
+          (
+            date: visit.date,
+            title: 'Consulta',
+            detail: visit.note,
+            procedureId: procedure.id,
+          ),
+      ],
+    ]..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  void updatePatient(Patient patient) => repository.updatePatient(patient);
+
+  Future<void> exportChart() async {
+    final bytes = await buildPatientChartPdf(
+      profile: snapshot.profile,
+      patient: patient,
+      history: history,
+    );
+    await Printing.sharePdf(bytes: bytes, filename: 'prontuario-${patient.id}.pdf');
+  }
+}
+
+class CalendarViewModel extends RepositoryViewModel {
+  CalendarViewModel(super.repository) {
+    final today = dateOnly(DateTime.now());
+    month = DateTime(today.year, today.month);
+    selected = today;
+  }
+
+  late DateTime month;
+  DateTime? selected;
+  ReturnStatus? returnFilter;
+
+  List<CalendarMark> get marks {
+    final all = marksInMonth(snapshot.procedures, snapshot.patients, month);
+    if (returnFilter == null) return all;
+    return all.where((mark) {
+      if (mark.kind != CalendarKind.retorno) return true;
+      return mark.returnStatus == returnFilter;
+    }).toList();
+  }
+
+  void previousMonth() {
+    month = DateTime(month.year, month.month - 1);
+    notifyListeners();
+  }
+
+  void nextMonth() {
+    month = DateTime(month.year, month.month + 1);
+    notifyListeners();
+  }
+
+  void selectDay(DateTime day) {
+    selected = day;
+    notifyListeners();
+  }
+
+  void setReturnFilter(ReturnStatus? status) {
+    returnFilter = status;
+    notifyListeners();
+  }
+}
+
+class ProcedureViewModel extends RepositoryViewModel {
+  ProcedureViewModel(super.repository, {required this.procedureId});
+
+  final String procedureId;
+
+  Procedure get procedure => snapshot.procedures.firstWhere((item) => item.id == procedureId);
+
+  Patient get patient => snapshot.patients.firstWhere((item) => item.id == procedure.patientId);
+
+  void addPhoto(ClinicPhoto photo) => repository.addPhoto(procedureId, photo);
+
+  void addVisit({required String note, required String statusLabel}) {
+    repository.addVisit(procedureId: procedureId, note: note, statusLabel: statusLabel);
+  }
+
+  void completeFollowUp({
+    required String followUpId,
+    required String note,
+    required String statusLabel,
+    required ReturnStatus returnStatus,
+  }) {
+    repository.completeFollowUp(
+      followUpId: followUpId,
+      note: note,
+      statusLabel: statusLabel,
+      returnStatus: returnStatus,
+    );
+  }
+
+  void saveNotes(String notes) {
+    repository.updateProcedure(procedure.copyWith(notes: notes));
+  }
+
+  void saveSites(List<ToothSite> sites) {
+    repository.updateProcedure(procedure.copyWith(sites: sites));
+  }
+}
+
+class CertificateViewModel extends RepositoryViewModel {
+  CertificateViewModel(super.repository, {required this.procedureId});
+
+  final String procedureId;
+
+  Procedure get procedure => snapshot.procedures.firstWhere((item) => item.id == procedureId);
+
+  Patient get patient => snapshot.patients.firstWhere((item) => item.id == procedure.patientId);
+
+  DentistProfile get profile => snapshot.profile;
+
+  Future<void> issue() async {
+    final bytes = await buildCertificatePdf(
+      profile: profile,
+      patient: patient,
+      procedure: procedure,
+    );
+    final path = await ClinicFiles().saveBytes(
+      'certificado-${procedure.id}.pdf',
+      bytes,
+    );
+    repository.issueCertificate(procedureId, pdfPath: path);
+    await Printing.sharePdf(bytes: bytes, filename: 'certificado-${procedure.id}.pdf');
+  }
+}
+
+class ProfileViewModel extends RepositoryViewModel {
+  ProfileViewModel(super.repository);
+
+  DentistProfile get profile => snapshot.profile;
+
+  void setCro(String value) => repository.updateProfile(profile.copyWith(cro: value));
+
+  void setReminderEnabled(bool value) =>
+      repository.updateProfile(profile.copyWith(reminderEnabled: value));
+
+  void setReminderHour(int value) => repository.updateProfile(profile.copyWith(reminderHour: value));
+
+  void setEmailChannel(bool value) => repository.updateProfile(profile.copyWith(emailChannel: value));
+
+  void setPushChannel(bool value) => repository.updateProfile(profile.copyWith(pushChannel: value));
+}
