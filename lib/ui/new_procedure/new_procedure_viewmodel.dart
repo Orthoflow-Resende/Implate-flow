@@ -8,7 +8,6 @@ class GraftDraft {
   String manufacturer = '';
   String model = '';
   String size = '';
-  String serial = '';
   String lot = '';
   String anvisa = '';
   DateTime? manufacturedOn;
@@ -21,7 +20,6 @@ class GraftDraft {
       ..manufacturer = manufacturer
       ..model = model
       ..size = size
-      ..serial = serial
       ..lot = lot
       ..anvisa = anvisa
       ..manufacturedOn = manufacturedOn
@@ -35,7 +33,6 @@ class GraftDraft {
       manufacturer: manufacturer,
       model: model,
       size: size,
-      serial: serial,
       lot: lot,
       anvisa: anvisa,
       manufacturedOn: manufacturedOn,
@@ -50,7 +47,6 @@ class GraftDraft {
       ..manufacturer = graft.manufacturer
       ..model = graft.model
       ..size = graft.size
-      ..serial = graft.serial
       ..lot = graft.lot
       ..anvisa = graft.anvisa
       ..manufacturedOn = graft.manufacturedOn
@@ -63,7 +59,6 @@ class PieceDraft {
   String manufacturer = '';
   String model = '';
   String size = '';
-  String serial = '';
   String lot = '';
   String anvisa = '';
   DateTime? manufacturedOn;
@@ -77,7 +72,6 @@ class PieceDraft {
       ..manufacturer = piece?.manufacturer ?? ''
       ..model = piece?.model ?? ''
       ..size = piece?.size ?? ''
-      ..serial = piece?.serial ?? ''
       ..lot = piece?.lot ?? ''
       ..anvisa = piece?.anvisa ?? ''
       ..manufacturedOn = piece?.manufacturedOn
@@ -335,7 +329,6 @@ class NewProcedureViewModel extends ChangeNotifier {
       draft.manufacturer = first.manufacturer;
       draft.model = first.model;
       draft.size = first.size;
-      draft.serial = first.serial;
       draft.withGraft = first.withGraft;
       draft.grafts = [for (final graft in first.grafts) graft.copy()];
     }
@@ -390,7 +383,6 @@ class NewProcedureViewModel extends ChangeNotifier {
                         manufacturer: drafts[tooth]?.manufacturer ?? '',
                         model: drafts[tooth]?.model ?? '',
                         size: drafts[tooth]?.size ?? '',
-                        serial: drafts[tooth]?.serial ?? '',
                         lot: drafts[tooth]?.lot ?? '',
                         anvisa: drafts[tooth]?.anvisa ?? '',
                         manufacturedOn: drafts[tooth]?.manufacturedOn,

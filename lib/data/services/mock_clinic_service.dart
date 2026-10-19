@@ -62,7 +62,6 @@ ClinicSnapshot buildDemoSnapshot() {
               manufacturer: 'Neodent',
               model: 'Drive GM',
               size: '3.5 × 11.5 mm',
-              serial: 'ND-36001',
               lot: 'L24-118',
               manufacturedOn: DateTime(2024, 11, 2),
               expiresOn: DateTime(2029, 11, 2),
@@ -117,7 +116,6 @@ ClinicSnapshot buildDemoSnapshot() {
               manufacturer: 'Straumann',
               model: 'BLX',
               size: '3.75 × 10 mm',
-              serial: 'ST-14002',
               lot: 'B25-014',
               manufacturedOn: DateTime(2025, 2, 1),
               expiresOn: DateTime(2030, 2, 1),
@@ -131,7 +129,6 @@ ClinicSnapshot buildDemoSnapshot() {
               manufacturer: 'Straumann',
               model: 'BLX',
               size: '4.0 × 10 mm',
-              serial: 'ST-16003',
               lot: 'B25-016',
               manufacturedOn: DateTime(2025, 2, 1),
               expiresOn: DateTime(2030, 2, 1),
@@ -177,7 +174,6 @@ ClinicSnapshot buildDemoSnapshot() {
                 manufacturer: 'Nobel Biocare',
                 model: 'NobelActive',
                 size: tooth == 16 ? '4.3 × 13 mm' : '3.5 × 13 mm',
-                serial: 'NB-$tooth',
               ),
               grafts: tooth == 16
                   ? [

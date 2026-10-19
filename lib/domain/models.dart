@@ -92,12 +92,6 @@ const implantSizes = <String>[
   '5.0 × 13 mm',
 ];
 
-const implantSerials = <String, List<String>>{
-  'Neodent': ['ND-36001', 'ND-36002', 'ND-36003', 'ND-36004', 'ND-36005'],
-  'Straumann': ['ST-14002', 'ST-16003', 'ST-14004', 'ST-16005', 'ST-18006'],
-  'Nobel Biocare': ['NB-14', 'NB-16', 'NB-24', 'NB-26', 'NB-11'],
-};
-
 List<String> withCurrentOption(List<String> options, String current) {
   if (current.isNotEmpty && !options.contains(current)) {
     return [current, ...options];
@@ -295,7 +289,6 @@ class ImplantPiece {
     this.manufacturer = '',
     this.model = '',
     this.size = '',
-    this.serial = '',
     this.lot = '',
     this.manufacturedOn,
     this.expiresOn,
@@ -305,7 +298,6 @@ class ImplantPiece {
   final String manufacturer;
   final String model;
   final String size;
-  final String serial;
   final String lot;
   final DateTime? manufacturedOn;
   final DateTime? expiresOn;
@@ -315,7 +307,6 @@ class ImplantPiece {
       manufacturer.isNotEmpty &&
       model.isNotEmpty &&
       size.isNotEmpty &&
-      serial.isNotEmpty &&
       manufacturedOn != null &&
       expiresOn != null;
 }
@@ -326,7 +317,6 @@ class GraftMaterial {
     this.manufacturer = '',
     this.model = '',
     this.size = '',
-    this.serial = '',
     this.lot = '',
     this.manufacturedOn,
     this.expiresOn,
@@ -338,7 +328,6 @@ class GraftMaterial {
   final String manufacturer;
   final String model;
   final String size;
-  final String serial;
   final String lot;
   final DateTime? manufacturedOn;
   final DateTime? expiresOn;

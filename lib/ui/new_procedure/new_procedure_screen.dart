@@ -295,20 +295,11 @@ class _ToothCard extends StatelessWidget {
             const SizedBox(height: 12),
             _ModelField(viewModel: viewModel, tooth: tooth),
             const SizedBox(height: 12),
-            _FieldRow(
-              first: PresetDropdown(
-                label: 'Tamanho',
-                value: draft.size,
-                options: implantSizes,
-                onChanged: (value) => viewModel.updateDraft(tooth, (item) => item.size = value),
-              ),
-              second: PresetDropdown(
-                label: 'Série',
-                value: draft.serial,
-                options: implantSerials[draft.manufacturer] ?? const [],
-                enabled: draft.manufacturer.isNotEmpty,
-                onChanged: (value) => viewModel.updateDraft(tooth, (item) => item.serial = value),
-              ),
+            PresetDropdown(
+              label: 'Tamanho',
+              value: draft.size,
+              options: implantSizes,
+              onChanged: (value) => viewModel.updateDraft(tooth, (item) => item.size = value),
             ),
             const SizedBox(height: 4),
             _DateTile(
@@ -346,25 +337,6 @@ class _ToothCard extends StatelessWidget {
   }
 }
 
-class _FieldRow extends StatelessWidget {
-  const _FieldRow({required this.first, required this.second});
-
-  final Widget first;
-  final Widget second;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: first),
-        const SizedBox(width: 12),
-        Expanded(child: second),
-      ],
-    );
-  }
-}
-
 class _ManufacturerField extends StatelessWidget {
   const _ManufacturerField({
     required this.viewModel,
@@ -391,7 +363,6 @@ class _ManufacturerField extends StatelessWidget {
         if (graftIndex == null) {
           item.manufacturer = value;
           item.model = '';
-          item.serial = '';
         } else {
           item.grafts[graftIndex!].manufacturer = value;
           item.grafts[graftIndex!].model = '';
@@ -492,22 +463,12 @@ class _GraftFields extends StatelessWidget {
                     const SizedBox(height: 12),
                     _ModelField(viewModel: viewModel, tooth: tooth, graftIndex: index),
                     const SizedBox(height: 12),
-                    _FieldRow(
-                      first: TextFormField(
-                        initialValue: draft.grafts[index].size,
-                        decoration: const InputDecoration(labelText: 'Volume'),
-                        onChanged: (value) => viewModel.updateDraft(
-                          tooth,
-                          (item) => item.grafts[index].size = value,
-                        ),
-                      ),
-                      second: TextFormField(
-                        initialValue: draft.grafts[index].serial,
-                        decoration: const InputDecoration(labelText: 'Série'),
-                        onChanged: (value) => viewModel.updateDraft(
-                          tooth,
-                          (item) => item.grafts[index].serial = value,
-                        ),
+                    TextFormField(
+                      initialValue: draft.grafts[index].size,
+                      decoration: const InputDecoration(labelText: 'Volume'),
+                      onChanged: (value) => viewModel.updateDraft(
+                        tooth,
+                        (item) => item.grafts[index].size = value,
                       ),
                     ),
                     _DateTile(

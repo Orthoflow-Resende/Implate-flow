@@ -46,7 +46,6 @@ class _TraceabilityEditorPageState extends State<TraceabilityEditorPage> {
                   manufacturer: drafts[site.fdi]?.manufacturer ?? '',
                   model: drafts[site.fdi]?.model ?? '',
                   size: drafts[site.fdi]?.size ?? '',
-                  serial: drafts[site.fdi]?.serial ?? '',
                   lot: drafts[site.fdi]?.lot ?? '',
                   anvisa: drafts[site.fdi]?.anvisa ?? '',
                   manufacturedOn: drafts[site.fdi]?.manufacturedOn,
@@ -151,7 +150,6 @@ class _SiteCard extends StatelessWidget {
                 onChanged: (value) {
                   draft.manufacturer = value;
                   draft.model = '';
-                  draft.serial = '';
                   onChanged();
                 },
               ),
@@ -167,26 +165,14 @@ class _SiteCard extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 16),
-              _FieldRow(
-                first: PresetDropdown(
-                  label: 'Tamanho',
-                  value: draft.size,
-                  options: implantSizes,
-                  onChanged: (value) {
-                    draft.size = value;
-                    onChanged();
-                  },
-                ),
-                second: PresetDropdown(
-                  label: 'Série',
-                  value: draft.serial,
-                  options: implantSerials[draft.manufacturer] ?? const [],
-                  enabled: draft.manufacturer.isNotEmpty,
-                  onChanged: (value) {
-                    draft.serial = value;
-                    onChanged();
-                  },
-                ),
+              PresetDropdown(
+                label: 'Tamanho',
+                value: draft.size,
+                options: implantSizes,
+                onChanged: (value) {
+                  draft.size = value;
+                  onChanged();
+                },
               ),
               const SizedBox(height: 8),
               _DateTile(
@@ -300,17 +286,10 @@ class _GraftBlock extends StatelessWidget {
                       },
                     ),
                     const SizedBox(height: 16),
-                    _FieldRow(
-                      first: TextFormField(
-                        initialValue: draft.grafts[index].size,
-                        decoration: const InputDecoration(labelText: 'Volume'),
-                        onChanged: (value) => draft.grafts[index].size = value,
-                      ),
-                      second: TextFormField(
-                        initialValue: draft.grafts[index].serial,
-                        decoration: const InputDecoration(labelText: 'Série'),
-                        onChanged: (value) => draft.grafts[index].serial = value,
-                      ),
+                    TextFormField(
+                      initialValue: draft.grafts[index].size,
+                      decoration: const InputDecoration(labelText: 'Volume'),
+                      onChanged: (value) => draft.grafts[index].size = value,
                     ),
                     _DateTile(
                       icon: Icons.precision_manufacturing_outlined,
@@ -358,25 +337,6 @@ class _GraftBlock extends StatelessWidget {
             label: const Text('Outro enxerto'),
           ),
         ),
-      ],
-    );
-  }
-}
-
-class _FieldRow extends StatelessWidget {
-  const _FieldRow({required this.first, required this.second});
-
-  final Widget first;
-  final Widget second;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: first),
-        const SizedBox(width: 12),
-        Expanded(child: second),
       ],
     );
   }

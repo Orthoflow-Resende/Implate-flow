@@ -82,7 +82,6 @@ class CertificateScreen extends StatelessWidget {
                       Text(
                         '${site.piece!.manufacturer} ${site.piece!.model}\n'
                         '${site.piece!.size}\n'
-                        'Série ${site.piece!.serial}\n'
                         'Fabricação ${site.piece!.manufacturedOn == null ? '—' : formatDay(site.piece!.manufacturedOn!)}\n'
                         'Validade ${site.piece!.expiresOn == null ? '—' : formatDay(site.piece!.expiresOn!)}',
                       ),
@@ -94,7 +93,6 @@ class CertificateScreen extends StatelessWidget {
                               ? 'Enxerto autógeno\nRegião doadora: ${graft.donorSite}'
                               : 'Enxerto ${graft.manufacturer} ${graft.model}\n'
                                   '${graft.size.isEmpty ? '' : '${graft.size}\n'}'
-                                  '${graft.serial.isEmpty ? '' : 'Série ${graft.serial}\n'}'
                                   'Validade ${graft.expiresOn == null ? '—' : formatDay(graft.expiresOn!)}',
                         ),
                       ),

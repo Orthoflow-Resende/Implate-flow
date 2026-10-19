@@ -85,7 +85,7 @@ class ProcedureScreen extends StatelessWidget {
                   ),
                   if (site.piece != null)
                     Text(
-                      '${site.piece!.manufacturer} ${site.piece!.model} ${site.piece!.size} ${site.piece!.serial}',
+                      '${site.piece!.manufacturer} ${site.piece!.model} ${site.piece!.size}',
                     ),
                   for (final graft in site.grafts)
                     Text(

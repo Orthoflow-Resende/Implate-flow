@@ -35,7 +35,6 @@ Future<Uint8List> buildCertificatePdf({
           if (site.piece != null) ...[
             pw.Text('${site.piece!.manufacturer} ${site.piece!.model}'),
             pw.Text(site.piece!.size),
-            pw.Text('Série ${site.piece!.serial}'),
             pw.Text(
               'Fabricação ${site.piece!.manufacturedOn == null ? '—' : formatDay(site.piece!.manufacturedOn!)}',
             ),
@@ -49,7 +48,6 @@ Future<Uint8List> buildCertificatePdf({
                   ? 'Enxerto autógeno · região doadora ${graft.donorSite}'
                   : 'Enxerto ${graft.manufacturer} ${graft.model}'
                       '${graft.size.isEmpty ? '' : ' · ${graft.size}'}'
-                      '${graft.serial.isEmpty ? '' : ' · série ${graft.serial}'}'
                       '${graft.manufacturedOn == null ? '' : ' · fabricação ${formatDay(graft.manufacturedOn!)}'}'
                       '${graft.expiresOn == null ? '' : ' · validade ${formatDay(graft.expiresOn!)}'}',
             ),

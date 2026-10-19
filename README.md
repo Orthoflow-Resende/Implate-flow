@@ -110,10 +110,10 @@ Enxerto junto da peça é um interruptor em cada pilar, no resumo. Não é uma q
 
 Um bloco por pilar, ou por dente no enxerto sozinho. Pônticos aparecem só como lista.
 
-- Grupo Implante, em cada pilar: fabricante, modelo, tamanho (diâmetro e comprimento), número de série, lote, fabricação, validade e registro ANVISA.
-- Grupo Enxerto, no enxerto sozinho ou quando o pilar está marcado: origem biomaterial ou autógeno. No biomaterial, fabricante, modelo, tamanho ou volume, lote, série, fabricação, validade e registro ANVISA. No autógeno, a região doadora. Dá para acrescentar outro enxerto no mesmo dente.
+- Grupo Implante, em cada pilar: fabricante, modelo, tamanho (diâmetro e comprimento), lote, fabricação, validade e registro ANVISA.
+- Grupo Enxerto, no enxerto sozinho ou quando o pilar está marcado: origem biomaterial ou autógeno. No biomaterial, fabricante, modelo, tamanho ou volume, lote, fabricação, validade e registro ANVISA. No autógeno, a região doadora. Dá para acrescentar outro enxerto no mesmo dente.
 - Fabricante e modelo são listas do catálogo daquele grupo. Modelo só habilita depois do fabricante. A lista de implante não entra no enxerto.
-- Série, lote, tamanho, fabricação e validade são de cada peça e de cada enxerto.
+- Lote, tamanho, fabricação e validade são de cada peça e de cada enxerto.
 - O rastreio pode ficar em branco e ser completado depois. O certificado só sai com os campos obrigatórios.
 
 Catálogo inicial de implantes: Neodent, Straumann e Nobel Biocare, com os modelos de cada um. Catálogo de enxertos: biomateriais como Geistlich Bio-Oss. O dentista não cadastra outro nome. Incluir ou aposentar item é carga de dados.
@@ -130,7 +130,7 @@ Ao salvar, o app propõe sutura em 7 dias e um retorno longo. O dentista confirm
 
 Cada retorno guarda se avisa no dia e a que horas. O padrão do perfil é ligado, às 8h, fuso de Brasília. Na confirmação, o dentista desliga aquele compromisso ou escolhe outro horário. E-mail e push saem nesse horário. Se o retorno seguir agendado no dia seguinte, sai um aviso de atraso, uma vez.
 
-O texto do lembrete leva nome do paciente, dente ou arcada e motivo. Série, lote, foto e telefone do paciente não entram. O paciente não recebe mensagem. WhatsApp, numa versão seguinte, repete o mesmo texto no número do dentista.
+O texto do lembrete leva nome do paciente, dente ou arcada e motivo. Lote, foto e telefone do paciente não entram. O paciente não recebe mensagem. WhatsApp, numa versão seguinte, repete o mesmo texto no número do dentista.
 
 ## Status
 
@@ -154,7 +154,7 @@ O calendário junta, num mês, as datas de todos os pacientes: cirurgia, consult
 
 Um PDF por procedimento, gerado pela API e gravado no S3. Na ponte e no protocolo, um PDF lista todos os pilares. Pôntico entra só como número.
 
-Obrigatórios sempre: CRO/UF, paciente, data da cirurgia e dentes. Em cada pilar: fabricante, modelo, tamanho, número de série, fabricação e validade. No enxerto de biomaterial: fabricante, modelo, lote e validade. No autógeno: região doadora. Se faltar campo, o app aponta o campo e não gera o arquivo.
+Obrigatórios sempre: CRO/UF, paciente, data da cirurgia e dentes. Em cada pilar: fabricante, modelo, tamanho, fabricação e validade. No enxerto de biomaterial: fabricante, modelo, lote e validade. No autógeno: região doadora. Se faltar campo, o app aponta o campo e não gera o arquivo.
 
 O PDF traz profissional, cirurgia, implante, enxerto e a data de emissão. Telefone, fotos, observação e status ficam de fora. Emitir de novo gera outro PDF se os dados tiverem sido corrigidos.
 
@@ -185,7 +185,7 @@ Dado de saúde (paciente, dente, cirurgia, peça, enxerto, foto e certificado) s
 
 - O dentista é o controlador. O Implate Flow é o operador. O provedor de nuvem no Brasil é suboperador do prontuário. WorkOS, e-mail e push são suboperadores só da conta e do lembrete.
 - Base: tutela da saúde no procedimento do dentista, e o dever legal de guardar o prontuário.
-- Prontuário, foto e PDF ficam no Brasil, criptografados em repouso e em trânsito. A URL da imagem expira e só sai para o dentista dono. Log não grava nome de paciente, série, lote nem conteúdo de foto.
+- Prontuário, foto e PDF ficam no Brasil, criptografados em repouso e em trânsito. A URL da imagem expira e só sai para o dentista dono. Log não grava nome de paciente, lote nem conteúdo de foto.
 - O dentista corrige o cadastro e exporta uma cópia, com fotos e certificados, para entregar ao paciente.
 - A Lei nº 13.787/2018 permite eliminar o prontuário só depois de 20 anos do último registro. Cada consulta, procedimento ou certificado reinicia a contagem. A eliminação apaga também o objeto no S3.
 - Acesso indevido, vazamento ou perda é registrado e comunicado ao dentista, para ele avisar a ANPD e o paciente quando a lei exigir.
