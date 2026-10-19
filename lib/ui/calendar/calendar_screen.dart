@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/models.dart';
+import '../core/filter_menu.dart';
 import '../core/layout.dart';
 import '../view_models.dart';
 
@@ -18,7 +19,42 @@ class CalendarScreen extends StatelessWidget {
         ? <CalendarMark>[]
         : marks.where((mark) => sameDay(mark.date, selected)).toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Calendário')),
+      appBar: AppBar(
+        title: const Text('Calendário'),
+        actions: [
+          FilterMenuButton(
+            activeCount: viewModel.returnFilter == null ? 0 : 1,
+            onClear: () => viewModel.setReturnFilter(null),
+            groups: [
+              FilterMenuGroup(
+                title: 'Retorno',
+                options: [
+                  FilterMenuOption(
+                    label: 'Todos',
+                    selected: viewModel.returnFilter == null,
+                    onSelected: () => viewModel.setReturnFilter(null),
+                  ),
+                  FilterMenuOption(
+                    label: 'Agendados',
+                    selected: viewModel.returnFilter == ReturnStatus.agendado,
+                    onSelected: () => viewModel.setReturnFilter(ReturnStatus.agendado),
+                  ),
+                  FilterMenuOption(
+                    label: 'Realizados',
+                    selected: viewModel.returnFilter == ReturnStatus.realizado,
+                    onSelected: () => viewModel.setReturnFilter(ReturnStatus.realizado),
+                  ),
+                  FilterMenuOption(
+                    label: 'Faltou',
+                    selected: viewModel.returnFilter == ReturnStatus.faltou,
+                    onSelected: () => viewModel.setReturnFilter(ReturnStatus.faltou),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
@@ -39,36 +75,6 @@ class CalendarScreen extends StatelessWidget {
                     IconButton(onPressed: viewModel.nextMonth, icon: const Icon(Icons.chevron_right)),
                   ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      FilterChip(
-                        label: const Text('Todos'),
-                        selected: viewModel.returnFilter == null,
-                        onSelected: (_) => viewModel.setReturnFilter(null),
-                      ),
-                      FilterChip(
-                        label: const Text('Agendados'),
-                        selected: viewModel.returnFilter == ReturnStatus.agendado,
-                        onSelected: (_) => viewModel.setReturnFilter(ReturnStatus.agendado),
-                      ),
-                      FilterChip(
-                        label: const Text('Realizados'),
-                        selected: viewModel.returnFilter == ReturnStatus.realizado,
-                        onSelected: (_) => viewModel.setReturnFilter(ReturnStatus.realizado),
-                      ),
-                      FilterChip(
-                        label: const Text('Faltou'),
-                        selected: viewModel.returnFilter == ReturnStatus.faltou,
-                        onSelected: (_) => viewModel.setReturnFilter(ReturnStatus.faltou),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
                 _MonthGrid(
                   month: viewModel.month,
                   marks: marks,
