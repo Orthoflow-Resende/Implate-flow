@@ -17,6 +17,7 @@ class AppShell extends StatelessWidget {
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Início'),
           NavigationDestination(icon: Icon(Icons.people_outline), label: 'Pacientes'),
           NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Calendário'),
+          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Relatórios'),
         ],
       ),
     );

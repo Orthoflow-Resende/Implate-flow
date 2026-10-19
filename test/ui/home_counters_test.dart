@@ -110,19 +110,28 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel('Atraso, 1'));
     await tester.pumpAndSettle();
-    expect(find.text('Relatórios'), findsOneWidget);
+    expect(find.text('Relatórios'), findsWidgets);
+    final reportsScroll = find.descendant(
+      of: find.byKey(const ValueKey('reports-scroll')),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Scrollable && widget.axisDirection == AxisDirection.down,
+      ),
+    );
+    await tester.scrollUntilVisible(find.text('Pacientes em atraso'), 200, scrollable: reportsScroll);
+    final overdueChip = tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Pacientes em atraso'));
+    expect(overdueChip.selected, isTrue);
+    await tester.scrollUntilVisible(find.text('Ana Costa'), 300, scrollable: reportsScroll);
     expect(find.text('Ana Costa'), findsOneWidget);
     expect(find.text('2 compromissos'), findsOneWidget);
     expect(find.text('Bruno Dias'), findsNothing);
-    final overdueChip = tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Pacientes em atraso'));
-    expect(overdueChip.selected, isTrue);
 
+    await tester.scrollUntilVisible(find.text('Faltas'), -300, scrollable: reportsScroll);
     await tester.tap(find.text('Faltas'));
     await tester.pumpAndSettle();
     expect(find.text('Bruno Dias'), findsOneWidget);
     expect(find.text('Ana Costa'), findsNothing);
 
-    await tester.pageBack();
+    await tester.tap(find.text('Início'));
     await tester.pumpAndSettle();
     repository.completeFollowUp(
       followUpId: 'ret-1',
@@ -141,6 +150,11 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Atraso, 0'));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Nenhum paciente em atraso.'),
+      300,
+      scrollable: reportsScroll,
+    );
     expect(find.text('Nenhum paciente em atraso.'), findsOneWidget);
   });
 }

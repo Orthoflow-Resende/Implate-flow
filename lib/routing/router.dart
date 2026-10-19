@@ -68,6 +68,20 @@ GoRouter buildRouter(SessionViewModel session) {
               ),
             ],
           ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/reports',
+                builder: (context, state) => ChangeNotifierProvider(
+                  create: (context) => ReportsViewModel(
+                    context.read<ClinicRepository>(),
+                    filter: reportFilterFromName(state.uri.queryParameters['filtro']),
+                  ),
+                  child: const ReportsQuerySync(child: ReportsScreen()),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(
@@ -113,16 +127,6 @@ GoRouter buildRouter(SessionViewModel session) {
             ),
           ),
         ],
-      ),
-      GoRoute(
-        path: '/reports',
-        builder: (context, state) => ChangeNotifierProvider(
-          create: (context) => ReportsViewModel(
-            context.read<ClinicRepository>(),
-            filter: reportFilterFromName(state.uri.queryParameters['filtro']),
-          ),
-          child: const ReportsScreen(),
-        ),
       ),
       GoRoute(
         path: '/week',

@@ -16,12 +16,17 @@ class RepositoryViewModel extends ChangeNotifier {
   RepositoryViewModel(this.repository) {
     _subscription = repository.watch().listen((next) {
       snapshot = next;
+      loadError = null;
+      notifyListeners();
+    }, onError: (Object _) {
+      loadError = 'Não foi possível atualizar os relatórios.';
       notifyListeners();
     });
   }
 
   final ClinicRepository repository;
   late ClinicSnapshot snapshot = repository.current;
+  String? loadError;
   late final StreamSubscription<ClinicSnapshot> _subscription;
 
   @override
@@ -207,17 +212,106 @@ class ReportsViewModel extends RepositoryViewModel {
   ReportsViewModel(super.repository, {this.filter = ReportFilter.atrasados});
 
   ReportFilter filter;
+  ReportSpan span = ReportSpan.todos;
+  DateTime? customStart;
+  DateTime? customEnd;
+  Modality? modality;
+  String query = '';
+  bool byAppointment = false;
 
   DateTime get today => brasiliaToday();
 
-  List<Patient> get patients =>
-      patientsForReport(snapshot.procedures, snapshot.patients, filter, today);
+  ReportWindow get window => ReportWindow.span(
+        today,
+        span,
+        customStart: customStart,
+        customEnd: customEnd,
+      );
 
-  List<({Procedure procedure, FollowUp followUp})> rowsFor(String patientId) =>
-      reportFollowUps(snapshot.procedures, patientId, filter, today);
+  ClinicReport get totals => clinicReport(
+        procedures: snapshot.procedures,
+        patients: snapshot.patients,
+        today: today,
+        window: window,
+        modality: modality,
+        query: query,
+      );
+
+  String get attendanceLabel {
+    final percent = totals.attendancePercent;
+    final rate = percent == null ? 'Comparecimento indisponível' : 'Comparecimento $percent%';
+    return '$rate · ${totals.withOutcome} com desfecho · ${totals.pending} sem desfecho';
+  }
+
+  List<Patient> get patients => patientsForReport(
+        snapshot.procedures,
+        snapshot.patients,
+        filter,
+        today,
+        window: window,
+        modality: modality,
+        query: query,
+      );
+
+  List<({Procedure procedure, FollowUp followUp})> rowsFor(String patientId) => reportFollowUps(
+        snapshot.procedures,
+        patientId,
+        filter,
+        today,
+        window: window,
+        modality: modality,
+      );
+
+  List<({Patient patient, Procedure procedure, FollowUp followUp})> get appointments {
+    return [
+      for (final patient in patients)
+        for (final row in rowsFor(patient.id))
+          (patient: patient, procedure: row.procedure, followUp: row.followUp),
+    ];
+  }
 
   void setFilter(ReportFilter value) {
     filter = value;
+    notifyListeners();
+  }
+
+  void setSpan(ReportSpan value) {
+    span = value;
+    if (value == ReportSpan.personalizado) {
+      customStart ??= today;
+      customEnd ??= today;
+      if (dateOnly(customEnd!).isBefore(dateOnly(customStart!))) {
+        final start = customStart;
+        customStart = customEnd;
+        customEnd = start;
+      }
+    }
+    notifyListeners();
+  }
+
+  void setCustomStart(DateTime value) {
+    customStart = dateOnly(value);
+    span = ReportSpan.personalizado;
+    setSpan(ReportSpan.personalizado);
+  }
+
+  void setCustomEnd(DateTime value) {
+    customEnd = dateOnly(value);
+    setSpan(ReportSpan.personalizado);
+  }
+
+  void setModality(Modality? value) {
+    modality = value;
+    notifyListeners();
+  }
+
+  void setQuery(String value) {
+    query = value;
+    notifyListeners();
+  }
+
+  void setByAppointment(bool value) {
+    byAppointment = value;
     notifyListeners();
   }
 }

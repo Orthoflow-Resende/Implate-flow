@@ -50,22 +50,78 @@ List<FollowUp> scheduledFollowUps(List<Procedure> procedures) {
   ]..sort((a, b) => a.date.compareTo(b.date));
 }
 
-enum ReportFilter { atrasados, faltas, proximos, realizados }
+enum ReportFilter { emDia, atrasados, faltas, proximos, realizados }
+
+enum ReportSpan { todos, hoje, seteDias, trintaDias, personalizado }
+
+/// Inclusive civil-day window. A null edge means that side is open.
+///
+/// Cancelled and rescheduled appointments are not a [ReturnStatus]. Reports
+/// count each follow-up once and do not add the visit created when it is
+/// completed, so history is not mixed into the active appointment.
+class ReportWindow {
+  const ReportWindow({this.start, this.end});
+
+  final DateTime? start;
+  final DateTime? end;
+
+  bool contains(DateTime date) {
+    final day = dateOnly(date);
+    if (start != null && day.isBefore(dateOnly(start!))) return false;
+    if (end != null && day.isAfter(dateOnly(end!))) return false;
+    return true;
+  }
+
+  factory ReportWindow.span(
+    DateTime today,
+    ReportSpan span, {
+    DateTime? customStart,
+    DateTime? customEnd,
+  }) {
+    final day = dateOnly(today);
+    return switch (span) {
+      ReportSpan.todos => const ReportWindow(),
+      ReportSpan.hoje => ReportWindow(start: day, end: day),
+      ReportSpan.seteDias => ReportWindow(start: day, end: day.add(const Duration(days: 7))),
+      ReportSpan.trintaDias => ReportWindow(start: day, end: day.add(const Duration(days: 30))),
+      ReportSpan.personalizado => ReportWindow(
+          start: customStart == null ? null : dateOnly(customStart),
+          end: customEnd == null ? null : dateOnly(customEnd),
+        ),
+    };
+  }
+}
 
 String reportFilterLabel(ReportFilter filter) => switch (filter) {
+      ReportFilter.emDia => 'Em dia',
       ReportFilter.atrasados => 'Pacientes em atraso',
       ReportFilter.faltas => 'Faltas',
       ReportFilter.proximos => 'Próximos retornos',
       ReportFilter.realizados => 'Realizados',
     };
 
+String reportSpanLabel(ReportSpan span) => switch (span) {
+      ReportSpan.todos => 'Todos',
+      ReportSpan.hoje => 'Hoje',
+      ReportSpan.seteDias => '7 dias',
+      ReportSpan.trintaDias => '30 dias',
+      ReportSpan.personalizado => 'Período',
+    };
+
 ReportFilter reportFilterFromName(String? name) =>
     ReportFilter.values.asNameMap()[name] ?? ReportFilter.atrasados;
 
-bool followUpMatchesReport(FollowUp followUp, ReportFilter filter, DateTime today) {
+bool followUpMatchesReport(
+  FollowUp followUp,
+  ReportFilter filter,
+  DateTime today, {
+  ReportWindow window = const ReportWindow(),
+}) {
+  if (!window.contains(followUp.date)) return false;
   final day = dateOnly(followUp.date);
   final current = dateOnly(today);
   return switch (filter) {
+    ReportFilter.emDia => false,
     ReportFilter.atrasados =>
       followUp.status == ReturnStatus.agendado && day.isBefore(current),
     ReportFilter.faltas => followUp.status == ReturnStatus.faltou,
@@ -79,30 +135,167 @@ List<Patient> patientsForReport(
   List<Procedure> procedures,
   List<Patient> patients,
   ReportFilter filter,
-  DateTime today,
-) {
+  DateTime today, {
+  ReportWindow window = const ReportWindow(),
+  Modality? modality,
+  String query = '',
+}) {
+  final named = matchPatients(patients, query);
+  if (filter == ReportFilter.emDia) {
+    return named.where((patient) => _isOnTrack(procedures, patient.id, today, modality)).toList();
+  }
   final ids = <String>{
     for (final procedure in procedures)
-      if (procedure.followUps.any((item) => followUpMatchesReport(item, filter, today)))
+      if (_matchesModality(procedure, modality) &&
+          procedure.followUps.any(
+            (item) => followUpMatchesReport(item, filter, today, window: window),
+          ))
         procedure.patientId,
   };
-  return patients.where((patient) => ids.contains(patient.id)).toList()
-    ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  return named.where((patient) => ids.contains(patient.id)).toList();
 }
 
 List<({Procedure procedure, FollowUp followUp})> reportFollowUps(
   List<Procedure> procedures,
   String patientId,
   ReportFilter filter,
-  DateTime today,
-) {
+  DateTime today, {
+  ReportWindow window = const ReportWindow(),
+  Modality? modality,
+}) {
+  if (filter == ReportFilter.emDia) {
+    return [
+      for (final procedure in procedures)
+        if (procedure.patientId == patientId && _matchesModality(procedure, modality))
+          for (final followUp in procedure.followUps)
+            if (followUp.status == ReturnStatus.agendado &&
+                !dateOnly(followUp.date).isBefore(dateOnly(today)) &&
+                window.contains(followUp.date))
+              (procedure: procedure, followUp: followUp),
+    ]..sort((a, b) => a.followUp.date.compareTo(b.followUp.date));
+  }
   return [
     for (final procedure in procedures)
-      if (procedure.patientId == patientId)
+      if (procedure.patientId == patientId && _matchesModality(procedure, modality))
         for (final followUp in procedure.followUps)
-          if (followUpMatchesReport(followUp, filter, today))
+          if (followUpMatchesReport(followUp, filter, today, window: window))
             (procedure: procedure, followUp: followUp),
   ]..sort((a, b) => a.followUp.date.compareTo(b.followUp.date));
+}
+
+class ClinicReport {
+  const ClinicReport({
+    required this.onTrack,
+    required this.absences,
+    required this.overdue,
+    required this.upcoming,
+    required this.completed,
+    required this.attended,
+    required this.missed,
+    required this.pending,
+  });
+
+  final int onTrack;
+  final int absences;
+  final int overdue;
+  final int upcoming;
+  final int completed;
+  final int attended;
+  final int missed;
+  final int pending;
+
+  int get withOutcome => attended + missed;
+
+  int? get attendancePercent =>
+      withOutcome == 0 ? null : (attended / withOutcome * 100).round();
+}
+
+ClinicReport clinicReport({
+  required List<Procedure> procedures,
+  required List<Patient> patients,
+  required DateTime today,
+  ReportWindow window = const ReportWindow(),
+  Modality? modality,
+  String query = '',
+}) {
+  int count(ReportFilter filter) => patientsForReport(
+        procedures,
+        patients,
+        filter,
+        today,
+        window: window,
+        modality: modality,
+        query: query,
+      ).length;
+  final outcomes = _outcomeCounts(
+    procedures,
+    patients,
+    window: window,
+    modality: modality,
+    query: query,
+  );
+  return ClinicReport(
+    onTrack: count(ReportFilter.emDia),
+    absences: count(ReportFilter.faltas),
+    overdue: count(ReportFilter.atrasados),
+    upcoming: count(ReportFilter.proximos),
+    completed: count(ReportFilter.realizados),
+    attended: outcomes.attended,
+    missed: outcomes.missed,
+    pending: outcomes.pending,
+  );
+}
+
+bool _matchesModality(Procedure procedure, Modality? modality) =>
+    modality == null || procedure.modality == modality;
+
+bool _isOnTrack(
+  List<Procedure> procedures,
+  String patientId,
+  DateTime today,
+  Modality? modality,
+) {
+  final owned = [
+    for (final procedure in procedures)
+      if (procedure.patientId == patientId && _matchesModality(procedure, modality)) procedure,
+  ];
+  if (modality != null && owned.isEmpty) return false;
+  final current = dateOnly(today);
+  return owned.every(
+    (procedure) => procedure.followUps.every(
+      (followUp) =>
+          followUp.status != ReturnStatus.agendado || !dateOnly(followUp.date).isBefore(current),
+    ),
+  );
+}
+
+({int attended, int missed, int pending}) _outcomeCounts(
+  List<Procedure> procedures,
+  List<Patient> patients, {
+  required ReportWindow window,
+  required Modality? modality,
+  required String query,
+}) {
+  final allowed = matchPatients(patients, query).map((patient) => patient.id).toSet();
+  final seen = <String>{};
+  var attended = 0;
+  var missed = 0;
+  var pending = 0;
+  for (final procedure in procedures) {
+    if (!allowed.contains(procedure.patientId) || !_matchesModality(procedure, modality)) continue;
+    for (final followUp in procedure.followUps) {
+      if (!seen.add(followUp.id) || !window.contains(followUp.date)) continue;
+      switch (followUp.status) {
+        case ReturnStatus.realizado:
+          attended++;
+        case ReturnStatus.faltou:
+          missed++;
+        case ReturnStatus.agendado:
+          pending++;
+      }
+    }
+  }
+  return (attended: attended, missed: missed, pending: pending);
 }
 
 List<FollowUp> followUpsInNextDays(List<Procedure> procedures, DateTime today, {int days = 7}) {

@@ -42,7 +42,7 @@ class HomeScreen extends StatelessWidget {
                   child: _CountCard(
                     label: 'Atraso',
                     count: viewModel.overduePatientCount,
-                    onTap: () => context.push('/reports?filtro=atrasados'),
+                    onTap: () => context.go('/reports?filtro=atrasados'),
                   ),
                 ),
                 const SizedBox(width: 8),

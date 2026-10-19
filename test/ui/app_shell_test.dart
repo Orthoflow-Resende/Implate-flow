@@ -37,6 +37,8 @@ void main() {
     expect(find.widgetWithText(NavigationDestination, 'Agenda'), findsNothing);
     expect(find.widgetWithText(NavigationDestination, 'Pacientes'), findsOneWidget);
     expect(find.widgetWithText(NavigationDestination, 'Calendário'), findsOneWidget);
+    final reports = tester.widget<NavigationDestination>(find.widgetWithText(NavigationDestination, 'Relatórios'));
+    expect((reports.icon as Icon).icon, Icons.bar_chart_outlined);
 
     await tester.tap(find.text('Pacientes'));
     await tester.pumpAndSettle();
@@ -46,5 +48,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.widgetWithText(NavigationDestination, 'Início'), findsOneWidget);
     expect(find.text('Hoje'), findsOneWidget);
+
+    await tester.tap(find.text('Relatórios'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Comparecimento indisponível'), findsOneWidget);
   });
 }
