@@ -65,7 +65,8 @@ class CertificateScreen extends StatelessWidget {
                   Text(
                     '${procedure.classificationLabel}\n'
                     '${formatDay(procedure.surgeryDate)}\n'
-                    '${procedure.teethLabel}',
+                    '${procedure.teethLabel}'
+                    '${procedure.sinusLiftLabel == null ? '' : '\n${procedure.sinusLiftLabel}'}',
                   ),
                 ],
               ),
@@ -89,11 +90,8 @@ class CertificateScreen extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          graft.origin == GraftOrigin.autogeno
-                              ? 'Enxerto autógeno\nRegião doadora: ${graft.donorSite}'
-                              : 'Enxerto ${graft.manufacturer} ${graft.model}\n'
-                                  '${graft.size.isEmpty ? '' : '${graft.size}\n'}'
-                                  'Validade ${graft.expiresOn == null ? '—' : formatDay(graft.expiresOn!)}',
+                          '${graftTraceLabel(graft)}'
+                          '${graft.expiresOn == null ? '' : '\nValidade ${formatDay(graft.expiresOn!)}'}',
                         ),
                       ),
                   ],

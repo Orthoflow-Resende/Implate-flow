@@ -41,10 +41,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Foi realizado enxerto?'), findsOneWidget);
-    expect(find.text('Biomaterial'), findsNothing);
+    expect(find.text('Osso autógeno'), findsNothing);
     await tester.tap(find.text('Sim'));
     await tester.pumpAndSettle();
-    expect(find.text('Biomaterial'), findsOneWidget);
+    expect(find.text('Osso autógeno'), findsOneWidget);
 
     viewModel.updateDraft(11, (draft) {
       draft.grafts.first

@@ -29,6 +29,7 @@ Future<Uint8List> buildCertificatePdf({
         pw.Text(procedure.classificationLabel),
         pw.Text(formatDay(procedure.surgeryDate)),
         pw.Text(procedure.teethLabel),
+        if (procedure.sinusLiftLabel != null) pw.Text(procedure.sinusLiftLabel!),
         for (final site in procedure.pillars) ...[
           pw.SizedBox(height: 10),
           pw.Text('Dente ${site.fdi}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
@@ -44,12 +45,9 @@ Future<Uint8List> buildCertificatePdf({
           ],
           for (final graft in site.grafts)
             pw.Text(
-              graft.origin == GraftOrigin.autogeno
-                  ? 'Enxerto autógeno · região doadora ${graft.donorSite}'
-                  : 'Enxerto ${graft.manufacturer} ${graft.model}'
-                      '${graft.size.isEmpty ? '' : ' · ${graft.size}'}'
-                      '${graft.manufacturedOn == null ? '' : ' · fabricação ${formatDay(graft.manufacturedOn!)}'}'
-                      '${graft.expiresOn == null ? '' : ' · validade ${formatDay(graft.expiresOn!)}'}',
+              '${graftTraceLabel(graft)}'
+              '${graft.manufacturedOn == null ? '' : ' · fabricação ${formatDay(graft.manufacturedOn!)}'}'
+              '${graft.expiresOn == null ? '' : ' · validade ${formatDay(graft.expiresOn!)}'}',
             ),
         ],
       ],
@@ -97,6 +95,9 @@ Future<Uint8List> buildPatientChartPdf({
             style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
           ),
           pw.Text(procedure.statusLabel),
+          if (procedure.sinusLiftLabel != null) pw.Text(procedure.sinusLiftLabel!),
+          for (final site in procedure.sites)
+            for (final graft in site.grafts) pw.Text(graftTraceLabel(graft)),
           if (procedure.notes.isNotEmpty) pw.Text(procedure.notes),
           for (final visit in procedure.visits)
             pw.Text('${formatDay(visit.date)} · Consulta · ${visit.note}'),

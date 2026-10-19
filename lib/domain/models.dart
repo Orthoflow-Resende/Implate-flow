@@ -27,6 +27,18 @@ enum GraftStatus {
 
 enum GraftOrigin { biomaterial, autogeno }
 
+/// Processamento do material. Liofilizado não é origem biológica.
+enum GraftProcessing { liofilizado }
+
+enum GraftPresentation { bloco, po }
+
+/// Opções da interface. A origem biológica fica em [GraftOrigin].
+enum GraftMaterialChoice { autogeno, liofilizado }
+
+/// Catálogo clínico do levantamento de seio: janela lateral, acesso
+/// transalveolar (Summers) e uma descrição livre em Outro.
+enum SinusLiftTechnique { janelaLateral, transalveolar, outro }
+
 enum ReturnReason {
   sutura,
   osseointegracao,
@@ -101,11 +113,115 @@ List<String> withCurrentOption(List<String> options, String current) {
   return options;
 }
 
-const graftCatalog = <String, List<String>>{
-  'Geistlich': ['Bio-Oss', 'Bio-Oss Collagen'],
-  'Straumann': ['cerabone', 'maxgraft'],
-  'Baumer': ['Ox Bone'],
+class GraftProduct {
+  const GraftProduct({
+    required this.model,
+    required this.type,
+    required this.presentations,
+    this.granulometries = const [],
+  });
+
+  final String model;
+  final String type;
+  final List<GraftPresentation> presentations;
+  final List<String> granulometries;
+}
+
+const graftProducts = <String, List<GraftProduct>>{
+  'Geistlich': [
+    GraftProduct(
+      model: 'Bio-Oss',
+      type: 'Osso bovino desproteinizado',
+      presentations: [GraftPresentation.po],
+      granulometries: ['0,25–1 mm', '1–2 mm'],
+    ),
+    GraftProduct(
+      model: 'Bio-Oss Collagen',
+      type: 'Osso bovino desproteinizado',
+      presentations: [GraftPresentation.bloco],
+    ),
+  ],
+  'Straumann': [
+    GraftProduct(
+      model: 'cerabone',
+      type: 'Osso bovino',
+      presentations: [GraftPresentation.po],
+      granulometries: ['0,5–1 mm', '1–2 mm'],
+    ),
+    GraftProduct(
+      model: 'maxgraft',
+      type: 'Aloenxerto',
+      presentations: [GraftPresentation.bloco, GraftPresentation.po],
+      granulometries: ['0,5–2 mm'],
+    ),
+  ],
+  'Baumer': [
+    GraftProduct(
+      model: 'Ox Bone',
+      type: 'Osso bovino',
+      presentations: [GraftPresentation.bloco, GraftPresentation.po],
+      granulometries: ['0,25–1 mm', '1–2 mm'],
+    ),
+  ],
 };
+
+List<String> graftManufacturers() => graftProducts.keys.toList();
+
+List<GraftProduct> graftProductsOf(String manufacturer) =>
+    graftProducts[manufacturer] ?? const [];
+
+GraftProduct? graftProductOf(String manufacturer, String model) {
+  for (final product in graftProductsOf(manufacturer)) {
+    if (product.model == model) return product;
+  }
+  return null;
+}
+
+GraftMaterialChoice? graftMaterialChoice(GraftOrigin origin, GraftProcessing? processing) {
+  if (origin == GraftOrigin.autogeno) return GraftMaterialChoice.autogeno;
+  if (processing == GraftProcessing.liofilizado) return GraftMaterialChoice.liofilizado;
+  return null;
+}
+
+bool graftCombinationValid(GraftMaterial graft) {
+  if (graft.origin == GraftOrigin.autogeno) {
+    return graft.processing == null &&
+        graft.manufacturer.isEmpty &&
+        graft.model.isEmpty &&
+        graft.productType.isEmpty &&
+        graft.granulometry.isEmpty;
+  }
+  if (graft.presentation == GraftPresentation.bloco && graft.granulometry.isNotEmpty) {
+    return false;
+  }
+  if (graft.processing != GraftProcessing.liofilizado) return graft.donorSite.isEmpty;
+  if (graft.donorSite.isNotEmpty) return false;
+  final product = graftProductOf(graft.manufacturer, graft.model);
+  if (graft.manufacturer.isEmpty || graft.model.isEmpty) return product == null;
+  if (product == null) return false;
+  if (graft.productType.isNotEmpty && graft.productType != product.type) return false;
+  if (graft.presentation != null && !product.presentations.contains(graft.presentation)) {
+    return false;
+  }
+  if (graft.granulometry.isNotEmpty && !product.granulometries.contains(graft.granulometry)) {
+    return false;
+  }
+  return true;
+}
+
+String? sinusLiftIssue({
+  required bool applies,
+  required bool sinusLift,
+  SinusLiftTechnique? technique,
+  String note = '',
+}) {
+  if (!applies || !sinusLift) return null;
+  if (technique == null) return 'Informe o tipo de levantamento de seio.';
+  if (technique == SinusLiftTechnique.outro && note.trim().isEmpty) {
+    return 'Descreva o tipo de levantamento de seio.';
+  }
+  return null;
+}
 
 List<int> archOf(int tooth) =>
     upperArch.contains(tooth) ? upperArch : lowerArch;
@@ -188,6 +304,64 @@ String graftStatusLabel(GraftStatus status) => switch (status) {
       GraftStatus.prontoParaImplante => 'Pronto para implante',
       GraftStatus.intercorrencia => 'Intercorrência',
     };
+
+String graftMaterialChoiceLabel(GraftMaterialChoice choice) => switch (choice) {
+      GraftMaterialChoice.autogeno => 'Osso autógeno',
+      GraftMaterialChoice.liofilizado => 'Osso liofilizado',
+    };
+
+String graftPresentationLabel(GraftPresentation presentation) => switch (presentation) {
+      GraftPresentation.bloco => 'Em bloco',
+      GraftPresentation.po => 'Em pó',
+    };
+
+String sinusLiftTechniqueLabel(SinusLiftTechnique technique) => switch (technique) {
+      SinusLiftTechnique.janelaLateral => 'Janela lateral',
+      SinusLiftTechnique.transalveolar => 'Transalveolar',
+      SinusLiftTechnique.outro => 'Outro',
+    };
+
+String graftTraceLabel(GraftMaterial graft) {
+  final choice = graftMaterialChoice(graft.origin, graft.processing);
+  if (choice == GraftMaterialChoice.autogeno) {
+    return [
+      graftMaterialChoiceLabel(choice!),
+      if (graft.presentation != null) graftPresentationLabel(graft.presentation!),
+      if (graft.donorSite.isNotEmpty) 'região doadora ${graft.donorSite}',
+    ].join(' · ');
+  }
+  if (choice == GraftMaterialChoice.liofilizado) {
+    return [
+      graftMaterialChoiceLabel(choice!),
+      if (graft.presentation != null) graftPresentationLabel(graft.presentation!),
+      if (graft.manufacturer.isNotEmpty) graft.manufacturer,
+      if (graft.model.isNotEmpty) graft.model,
+      if (graft.productType.isNotEmpty) graft.productType,
+      if (graft.granulometry.isNotEmpty) graft.granulometry,
+    ].join(' · ');
+  }
+  final legacy = [
+    'Enxerto',
+    if (graft.manufacturer.isNotEmpty) graft.manufacturer,
+    if (graft.model.isNotEmpty) graft.model,
+  ].join(' ');
+  if (graft.size.isEmpty) return legacy;
+  return '$legacy · ${graft.size}';
+}
+
+String? sinusLiftSummary({
+  required bool sinusLift,
+  SinusLiftTechnique? technique,
+  String note = '',
+}) {
+  if (!sinusLift) return null;
+  if (technique == null) return 'Levantamento de seio';
+  if (technique == SinusLiftTechnique.outro) {
+    final described = note.trim();
+    return described.isEmpty ? 'Levantamento de seio · Outro' : 'Levantamento de seio · $described';
+  }
+  return 'Levantamento de seio · ${sinusLiftTechniqueLabel(technique)}';
+}
 
 String returnReasonLabel(ReturnReason reason) => switch (reason) {
       ReturnReason.sutura => 'Remoção de sutura',
@@ -347,8 +521,12 @@ class ImplantPiece {
 class GraftMaterial {
   const GraftMaterial({
     required this.origin,
+    this.processing,
+    this.presentation,
     this.manufacturer = '',
     this.model = '',
+    this.productType = '',
+    this.granulometry = '',
     this.size = '',
     this.lot = '',
     this.manufacturedOn,
@@ -358,8 +536,12 @@ class GraftMaterial {
   });
 
   final GraftOrigin origin;
+  final GraftProcessing? processing;
+  final GraftPresentation? presentation;
   final String manufacturer;
   final String model;
+  final String productType;
+  final String granulometry;
   final String size;
   final String lot;
   final DateTime? manufacturedOn;
@@ -368,6 +550,14 @@ class GraftMaterial {
   final String donorSite;
 
   bool get certificateReady => switch (origin) {
+        GraftOrigin.biomaterial when processing == GraftProcessing.liofilizado =>
+          manufacturer.isNotEmpty &&
+              model.isNotEmpty &&
+              productType.isNotEmpty &&
+              presentation != null &&
+              expiresOn != null &&
+              (presentation != GraftPresentation.po || granulometry.isNotEmpty) &&
+              (presentation != GraftPresentation.bloco || granulometry.isEmpty),
         GraftOrigin.biomaterial =>
           manufacturer.isNotEmpty && model.isNotEmpty && expiresOn != null,
         GraftOrigin.autogeno => donorSite.isNotEmpty,
@@ -467,6 +657,9 @@ class Procedure {
     required this.statusLabel,
     this.subtype,
     this.associatedGraft = false,
+    this.sinusLift = false,
+    this.sinusLiftTechnique,
+    this.sinusLiftNote = '',
     List<String>? linkedProcedureIds,
     this.arch,
     this.notes = '',
@@ -485,6 +678,9 @@ class Procedure {
   final Modality modality;
   final ProcedureSubtype? subtype;
   final bool associatedGraft;
+  final bool sinusLift;
+  final SinusLiftTechnique? sinusLiftTechnique;
+  final String sinusLiftNote;
   final List<String> linkedProcedureIds;
   final Arch? arch;
   final DateTime surgeryDate;
@@ -506,13 +702,20 @@ class Procedure {
     List<ClinicPhoto>? photos,
     DateTime? certificateIssuedAt,
     String? certificatePdfPath,
+    bool? sinusLift,
+    SinusLiftTechnique? sinusLiftTechnique,
+    String? sinusLiftNote,
   }) {
+    final lift = sinusLift ?? this.sinusLift;
     return Procedure(
       id: id,
       patientId: patientId,
       modality: modality,
       subtype: subtype,
       associatedGraft: associatedGraft,
+      sinusLift: lift,
+      sinusLiftTechnique: lift ? sinusLiftTechnique ?? this.sinusLiftTechnique : null,
+      sinusLiftNote: lift ? sinusLiftNote ?? this.sinusLiftNote : '',
       linkedProcedureIds: linkedProcedureIds,
       surgeryDate: surgeryDate,
       sites: sites ?? this.sites,
@@ -526,6 +729,12 @@ class Procedure {
       certificatePdfPath: certificatePdfPath ?? this.certificatePdfPath,
     );
   }
+
+  String? get sinusLiftLabel => sinusLiftSummary(
+        sinusLift: sinusLift,
+        technique: sinusLiftTechnique,
+        note: sinusLiftNote,
+      );
 
   List<ToothSite> get pillars =>
       sites.where((site) => site.role == ToothRole.pilar).toList();

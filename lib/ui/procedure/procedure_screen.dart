@@ -46,6 +46,7 @@ class ProcedureScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text('${formatDay(procedure.surgeryDate)} · ${procedure.teethLabel}'),
+                if (procedure.sinusLiftLabel != null) Text(procedure.sinusLiftLabel!),
                 Text(procedure.statusLabel),
                 if (procedure.notes.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -67,7 +68,14 @@ class ProcedureScreen extends StatelessWidget {
             action: TextButton(
               onPressed: () async {
                 final sites = await editTraceability(context, procedure: procedure);
-                if (sites != null) viewModel.saveSites(sites);
+                if (sites != null) {
+                  viewModel.saveTraceability(
+                    sites: sites.sites,
+                    sinusLift: sites.sinusLift,
+                    sinusLiftTechnique: sites.sinusLiftTechnique,
+                    sinusLiftNote: sites.sinusLiftNote,
+                  );
+                }
               },
               child: const Text('Editar'),
             ),
@@ -87,13 +95,7 @@ class ProcedureScreen extends StatelessWidget {
                     Text(
                       '${site.piece!.manufacturer} ${site.piece!.model} ${site.piece!.size}',
                     ),
-                  for (final graft in site.grafts)
-                    Text(
-                      graft.origin == GraftOrigin.autogeno
-                          ? 'Enxerto autógeno · ${graft.donorSite}'
-                          : 'Enxerto ${graft.manufacturer} ${graft.model}'
-                              '${graft.size.isEmpty ? '' : ' · ${graft.size}'}',
-                    ),
+                  for (final graft in site.grafts) Text(graftTraceLabel(graft)),
                 ],
               ),
             ),

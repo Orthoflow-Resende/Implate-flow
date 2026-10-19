@@ -3,13 +3,21 @@ import 'package:flutter/material.dart';
 import '../../domain/models.dart';
 import '../core/layout.dart';
 import '../core/preset_dropdown.dart';
+import '../graft/graft_form.dart';
 import '../new_procedure/new_procedure_viewmodel.dart';
 
-Future<List<ToothSite>?> editTraceability(
+typedef TraceabilityUpdate = ({
+  List<ToothSite> sites,
+  bool sinusLift,
+  SinusLiftTechnique? sinusLiftTechnique,
+  String sinusLiftNote,
+});
+
+Future<TraceabilityUpdate?> editTraceability(
   BuildContext context, {
   required Procedure procedure,
 }) {
-  return Navigator.of(context, rootNavigator: true).push<List<ToothSite>>(
+  return Navigator.of(context, rootNavigator: true).push<TraceabilityUpdate>(
     MaterialPageRoute(
       fullscreenDialog: true,
       builder: (context) => TraceabilityEditorPage(procedure: procedure),
@@ -31,35 +39,56 @@ class _TraceabilityEditorPageState extends State<TraceabilityEditorPage> {
     for (final site in widget.procedure.sites)
       if (site.role == ToothRole.pilar) site.fdi: PieceDraft.fromSite(site),
   };
+  late bool _sinusLift = widget.procedure.sinusLift;
+  late SinusLiftTechnique? _sinusTechnique = widget.procedure.sinusLiftTechnique;
+  late String _sinusNote = widget.procedure.sinusLiftNote;
 
   bool get _showImplant => widget.procedure.modality == Modality.implante;
 
+  bool get _asksSinusLift =>
+      widget.procedure.modality == Modality.enxerto || widget.procedure.associatedGraft;
+
   void _save() {
-    Navigator.pop(context, [
-      for (final site in widget.procedure.sites)
-        ToothSite(
-          fdi: site.fdi,
-          role: site.role,
-          piece: site.role == ToothRole.pontico || !_showImplant
-              ? null
-              : ImplantPiece(
-                  manufacturer: drafts[site.fdi]?.manufacturer ?? '',
-                  model: drafts[site.fdi]?.model ?? '',
-                  size: drafts[site.fdi]?.size ?? '',
-                  lot: drafts[site.fdi]?.lot ?? '',
-                  anvisa: drafts[site.fdi]?.anvisa ?? '',
-                  manufacturedOn: drafts[site.fdi]?.manufacturedOn,
-                  expiresOn: drafts[site.fdi]?.expiresOn,
-                ),
-          grafts: site.role == ToothRole.pontico
-              ? const []
-              : [
-                  if (!_showImplant || (drafts[site.fdi]?.withGraft ?? false))
-                    for (final graft in drafts[site.fdi]?.grafts ?? const <GraftDraft>[])
-                      graft.toMaterial(),
-                ],
-        ),
-    ]);
+    final issue = sinusLiftIssue(
+      applies: _asksSinusLift,
+      sinusLift: _sinusLift,
+      technique: _sinusTechnique,
+      note: _sinusNote,
+    );
+    if (issue != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(issue)));
+      return;
+    }
+    Navigator.pop(context, (
+      sites: [
+        for (final site in widget.procedure.sites)
+          ToothSite(
+            fdi: site.fdi,
+            role: site.role,
+            piece: site.role == ToothRole.pontico || !_showImplant
+                ? null
+                : ImplantPiece(
+                    manufacturer: drafts[site.fdi]?.manufacturer ?? '',
+                    model: drafts[site.fdi]?.model ?? '',
+                    size: drafts[site.fdi]?.size ?? '',
+                    lot: drafts[site.fdi]?.lot ?? '',
+                    anvisa: drafts[site.fdi]?.anvisa ?? '',
+                    manufacturedOn: drafts[site.fdi]?.manufacturedOn,
+                    expiresOn: drafts[site.fdi]?.expiresOn,
+                  ),
+            grafts: site.role == ToothRole.pontico
+                ? const []
+                : [
+                    if (!_showImplant || (drafts[site.fdi]?.withGraft ?? false))
+                      for (final graft in drafts[site.fdi]?.grafts ?? const <GraftDraft>[])
+                        graft.toMaterial(),
+                  ],
+          ),
+      ],
+      sinusLift: _asksSinusLift && _sinusLift,
+      sinusLiftTechnique: _asksSinusLift && _sinusLift ? _sinusTechnique : null,
+      sinusLiftNote: _asksSinusLift && _sinusLift ? _sinusNote.trim() : '',
+    ));
   }
 
   @override
@@ -90,6 +119,26 @@ class _TraceabilityEditorPageState extends State<TraceabilityEditorPage> {
                     color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     padding: const EdgeInsets.all(16),
                     child: Text('Pônticos sem peça: ${pontics.join(', ')}'),
+                  ),
+                ],
+                if (_asksSinusLift) ...[
+                  const SizedBox(height: 12),
+                  SinusLiftFields(
+                    sinusLift: _sinusLift,
+                    technique: _sinusTechnique,
+                    note: _sinusNote,
+                    onLift: (value) => setState(() {
+                      _sinusLift = value;
+                      if (!value) {
+                        _sinusTechnique = null;
+                        _sinusNote = '';
+                      }
+                    }),
+                    onTechnique: (value) => setState(() {
+                      _sinusTechnique = value;
+                      if (value != SinusLiftTechnique.outro) _sinusNote = '';
+                    }),
+                    onNote: (value) => _sinusNote = value,
                   ),
                 ],
                 const SizedBox(height: 20),
@@ -203,141 +252,22 @@ class _SiteCard extends StatelessWidget {
                 },
               ),
             ],
-            if (!showImplant || draft.withGraft) _GraftBlock(draft: draft, onChanged: onChanged),
+            if (!showImplant || draft.withGraft)
+              GraftMaterialFields(
+                grafts: draft.grafts,
+                onChanged: onChanged,
+                onAdd: () {
+                  draft.grafts.add(GraftDraft());
+                  onChanged();
+                },
+                onRemove: (index) {
+                  if (draft.grafts.length <= 1) return;
+                  draft.grafts.removeAt(index);
+                  onChanged();
+                },
+              ),
         ],
       ),
-    );
-  }
-}
-
-class _GraftBlock extends StatelessWidget {
-  const _GraftBlock({required this.draft, required this.onChanged});
-
-  final PieceDraft draft;
-  final VoidCallback onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var index = 0; index < draft.grafts.length; index++) ...[
-          const SizedBox(height: 8),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text('Enxerto ${index + 1}', style: Theme.of(context).textTheme.titleSmall),
-                      const Spacer(),
-                      if (draft.grafts.length > 1)
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () {
-                            draft.grafts.removeAt(index);
-                            onChanged();
-                          },
-                          icon: const Icon(Icons.remove_circle_outline),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<GraftOrigin>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(value: GraftOrigin.biomaterial, label: Text('Biomaterial')),
-                      ButtonSegment(value: GraftOrigin.autogeno, label: Text('Autógeno')),
-                    ],
-                    selected: {draft.grafts[index].origin},
-                    onSelectionChanged: (value) {
-                      draft.grafts[index].origin = value.first;
-                      onChanged();
-                    },
-                  ),
-                  if (draft.grafts[index].origin == GraftOrigin.biomaterial) ...[
-                    const SizedBox(height: 16),
-                    PresetDropdown(
-                      label: 'Fabricante',
-                      value: draft.grafts[index].manufacturer,
-                      options: graftCatalog.keys.toList(),
-                      onChanged: (value) {
-                        draft.grafts[index].manufacturer = value;
-                        draft.grafts[index].model = '';
-                        onChanged();
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    PresetDropdown(
-                      label: 'Modelo',
-                      value: draft.grafts[index].model,
-                      options: graftCatalog[draft.grafts[index].manufacturer] ?? const [],
-                      enabled: draft.grafts[index].manufacturer.isNotEmpty,
-                      onChanged: (value) {
-                        draft.grafts[index].model = value;
-                        onChanged();
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      initialValue: draft.grafts[index].size,
-                      decoration: const InputDecoration(labelText: 'Volume'),
-                      onChanged: (value) => draft.grafts[index].size = value,
-                    ),
-                    _DateTile(
-                      icon: Icons.precision_manufacturing_outlined,
-                      label: 'Fabricação',
-                      value: draft.grafts[index].manufacturedOn == null
-                          ? 'Informar'
-                          : formatDay(draft.grafts[index].manufacturedOn!),
-                      onTap: () => _pickDate(context, draft.grafts[index].manufacturedOn, (value) {
-                        draft.grafts[index].manufacturedOn = value;
-                        onChanged();
-                      }),
-                    ),
-                    _DateTile(
-                      icon: Icons.event_available_outlined,
-                      label: 'Validade',
-                      value: draft.grafts[index].expiresOn == null
-                          ? 'Informar'
-                          : formatDay(draft.grafts[index].expiresOn!),
-                      onTap: () => _pickDate(context, draft.grafts[index].expiresOn, (value) {
-                        draft.grafts[index].expiresOn = value;
-                        onChanged();
-                      }),
-                    ),
-                  ] else ...[
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      initialValue: draft.grafts[index].donorSite,
-                      decoration: const InputDecoration(labelText: 'Região doadora'),
-                      onChanged: (value) => draft.grafts[index].donorSite = value,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () {
-              draft.grafts.add(GraftDraft());
-              onChanged();
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Outro enxerto'),
-          ),
-        ),
-      ],
     );
   }
 }

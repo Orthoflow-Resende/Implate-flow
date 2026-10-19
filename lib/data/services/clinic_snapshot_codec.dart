@@ -82,6 +82,9 @@ Map<String, dynamic> _procedureToJson(Procedure procedure) {
     'modality': procedure.modality.name,
     'subtype': procedure.subtype?.name,
     'associatedGraft': procedure.associatedGraft,
+    'sinusLift': procedure.sinusLift,
+    'sinusLiftTechnique': procedure.sinusLiftTechnique?.name,
+    'sinusLiftNote': procedure.sinusLiftNote,
     'linkedProcedureIds': procedure.linkedProcedureIds,
     'arch': procedure.arch?.name,
     'surgeryDate': _date(procedure.surgeryDate),
@@ -140,6 +143,11 @@ Procedure _procedureFromJson(Map<String, dynamic> json) {
         ? null
         : ProcedureSubtype.values.byName(json['subtype'] as String),
     associatedGraft: json['associatedGraft'] as bool? ?? false,
+    sinusLift: json['sinusLift'] as bool? ?? false,
+    sinusLiftTechnique: json['sinusLiftTechnique'] == null
+        ? null
+        : SinusLiftTechnique.values.byName(json['sinusLiftTechnique'] as String),
+    sinusLiftNote: json['sinusLiftNote'] as String? ?? '',
     linkedProcedureIds: [
       for (final id in json['linkedProcedureIds'] as List<dynamic>? ?? const []) id as String,
     ],
@@ -223,8 +231,12 @@ ImplantPiece _pieceFromJson(Map<String, dynamic> json) {
 Map<String, dynamic> _graftToJson(GraftMaterial graft) {
   return {
     'origin': graft.origin.name,
+    'processing': graft.processing?.name,
+    'presentation': graft.presentation?.name,
     'manufacturer': graft.manufacturer,
     'model': graft.model,
+    'productType': graft.productType,
+    'granulometry': graft.granulometry,
     'size': graft.size,
     'lot': graft.lot,
     'manufacturedOn': _dateOrNull(graft.manufacturedOn),
@@ -237,8 +249,16 @@ Map<String, dynamic> _graftToJson(GraftMaterial graft) {
 GraftMaterial _graftFromJson(Map<String, dynamic> json) {
   return GraftMaterial(
     origin: GraftOrigin.values.byName(json['origin'] as String),
+    processing: json['processing'] == null
+        ? null
+        : GraftProcessing.values.byName(json['processing'] as String),
+    presentation: json['presentation'] == null
+        ? null
+        : GraftPresentation.values.byName(json['presentation'] as String),
     manufacturer: json['manufacturer'] as String? ?? '',
     model: json['model'] as String? ?? '',
+    productType: json['productType'] as String? ?? '',
+    granulometry: json['granulometry'] as String? ?? '',
     size: json['size'] as String? ?? '',
     lot: json['lot'] as String? ?? '',
     manufacturedOn: _parseDateOrNull(json['manufacturedOn'] as String?),

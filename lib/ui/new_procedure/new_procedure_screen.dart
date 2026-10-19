@@ -6,6 +6,7 @@ import '../../domain/models.dart';
 import '../core/layout.dart';
 import '../core/mouth_chart.dart';
 import '../core/preset_dropdown.dart';
+import '../graft/graft_form.dart';
 import 'new_procedure_viewmodel.dart';
 
 class NewProcedureScreen extends StatelessWidget {
@@ -242,6 +243,18 @@ class _SummaryStep extends StatelessWidget {
                   ],
                 const SizedBox(height: 12),
               ],
+              if (viewModel.asksSinusLift) ...[
+                const AppSectionHeader(title: 'Levantamento de seio'),
+                SinusLiftFields(
+                  sinusLift: viewModel.sinusLift,
+                  technique: viewModel.sinusLiftTechnique,
+                  note: viewModel.sinusLiftNote,
+                  onLift: viewModel.setSinusLift,
+                  onTechnique: viewModel.setSinusLiftTechnique,
+                  onNote: viewModel.setSinusLiftNote,
+                ),
+                const SizedBox(height: 20),
+              ],
               AppSectionHeader(
                 title: 'Rastreio',
                 subtitle: 'Pode ficar em branco e ser completado depois.',
@@ -431,32 +444,21 @@ class _ManufacturerField extends StatelessWidget {
   const _ManufacturerField({
     required this.viewModel,
     required this.tooth,
-    this.graftIndex,
   });
 
   final NewProcedureViewModel viewModel;
   final int tooth;
-  final int? graftIndex;
 
   @override
   Widget build(BuildContext context) {
     final draft = viewModel.drafts[tooth]!;
-    final catalog = graftIndex == null ? implantCatalog : graftCatalog;
-    final current = graftIndex == null
-        ? draft.manufacturer
-        : draft.grafts[graftIndex!].manufacturer;
     return PresetDropdown(
-      label: graftIndex == null ? 'Fabricante' : 'Fabricante do enxerto',
-      value: current,
-      options: catalog.keys.toList(),
+      label: 'Fabricante',
+      value: draft.manufacturer,
+      options: implantCatalog.keys.toList(),
       onChanged: (value) => viewModel.updateDraft(tooth, (item) {
-        if (graftIndex == null) {
-          item.manufacturer = value;
-          item.model = '';
-        } else {
-          item.grafts[graftIndex!].manufacturer = value;
-          item.grafts[graftIndex!].model = '';
-        }
+        item.manufacturer = value;
+        item.model = '';
       }),
     );
   }
@@ -466,34 +468,21 @@ class _ModelField extends StatelessWidget {
   const _ModelField({
     required this.viewModel,
     required this.tooth,
-    this.graftIndex,
   });
 
   final NewProcedureViewModel viewModel;
   final int tooth;
-  final int? graftIndex;
 
   @override
   Widget build(BuildContext context) {
     final draft = viewModel.drafts[tooth]!;
-    final catalog = graftIndex == null ? implantCatalog : graftCatalog;
-    final manufacturer = graftIndex == null
-        ? draft.manufacturer
-        : draft.grafts[graftIndex!].manufacturer;
-    final current = graftIndex == null ? draft.model : draft.grafts[graftIndex!].model;
-    final models = catalog[manufacturer] ?? const <String>[];
+    final models = implantCatalog[draft.manufacturer] ?? const <String>[];
     return PresetDropdown(
-      label: graftIndex == null ? 'Modelo' : 'Modelo do enxerto',
-      value: current,
+      label: 'Modelo',
+      value: draft.model,
       options: models,
-      enabled: manufacturer.isNotEmpty,
-      onChanged: (value) => viewModel.updateDraft(tooth, (item) {
-        if (graftIndex == null) {
-          item.model = value;
-        } else {
-          item.grafts[graftIndex!].model = value;
-        }
-      }),
+      enabled: draft.manufacturer.isNotEmpty,
+      onChanged: (value) => viewModel.updateDraft(tooth, (item) => item.model = value),
     );
   }
 }
@@ -507,115 +496,11 @@ class _GraftFields extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final draft = viewModel.drafts[tooth]!;
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var index = 0; index < draft.grafts.length; index++) ...[
-          const SizedBox(height: 8),
-          Material(
-            color: scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-            clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text('Enxerto ${index + 1}', style: Theme.of(context).textTheme.titleSmall),
-                      const Spacer(),
-                      if (draft.grafts.length > 1)
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => viewModel.removeGraft(tooth, index),
-                          icon: const Icon(Icons.remove_circle_outline),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<GraftOrigin>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(value: GraftOrigin.biomaterial, label: Text('Biomaterial')),
-                      ButtonSegment(value: GraftOrigin.autogeno, label: Text('Autógeno')),
-                    ],
-                    selected: {draft.grafts[index].origin},
-                    onSelectionChanged: (value) => viewModel.updateDraft(
-                      tooth,
-                      (item) => item.grafts[index].origin = value.first,
-                    ),
-                  ),
-                  if (draft.grafts[index].origin == GraftOrigin.biomaterial) ...[
-                    const SizedBox(height: 12),
-                    _ManufacturerField(viewModel: viewModel, tooth: tooth, graftIndex: index),
-                    const SizedBox(height: 12),
-                    _ModelField(viewModel: viewModel, tooth: tooth, graftIndex: index),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      initialValue: draft.grafts[index].size,
-                      decoration: const InputDecoration(labelText: 'Volume'),
-                      onChanged: (value) => viewModel.updateDraft(
-                        tooth,
-                        (item) => item.grafts[index].size = value,
-                      ),
-                    ),
-                    _DateTile(
-                      icon: Icons.precision_manufacturing_outlined,
-                      label: 'Fabricação',
-                      value: draft.grafts[index].manufacturedOn == null
-                          ? 'Informar'
-                          : formatDay(draft.grafts[index].manufacturedOn!),
-                      onTap: () => _pickDate(
-                        context,
-                        draft.grafts[index].manufacturedOn ?? DateTime.now(),
-                        (value) => viewModel.updateDraft(
-                          tooth,
-                          (item) => item.grafts[index].manufacturedOn = value,
-                        ),
-                      ),
-                    ),
-                    _DateTile(
-                      icon: Icons.event_available_outlined,
-                      label: 'Validade',
-                      value: draft.grafts[index].expiresOn == null
-                          ? 'Informar'
-                          : formatDay(draft.grafts[index].expiresOn!),
-                      onTap: () => _pickDate(
-                        context,
-                        draft.grafts[index].expiresOn ?? DateTime.now(),
-                        (value) => viewModel.updateDraft(
-                          tooth,
-                          (item) => item.grafts[index].expiresOn = value,
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      initialValue: draft.grafts[index].donorSite,
-                      decoration: const InputDecoration(labelText: 'Região doadora'),
-                      onChanged: (value) => viewModel.updateDraft(
-                        tooth,
-                        (item) => item.grafts[index].donorSite = value,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => viewModel.addGraft(tooth),
-            icon: const Icon(Icons.add),
-            label: const Text('Outro enxerto'),
-          ),
-        ),
-      ],
+    return GraftMaterialFields(
+      grafts: draft.grafts,
+      onChanged: () => viewModel.updateDraft(tooth, (_) {}),
+      onAdd: () => viewModel.addGraft(tooth),
+      onRemove: (index) => viewModel.removeGraft(tooth, index),
     );
   }
 }

@@ -182,7 +182,11 @@ class PatientViewModel extends RepositoryViewModel {
         (
           date: procedure.surgeryDate,
           title: 'Cirurgia',
-          detail: '${procedure.classificationLabel} · ${procedure.teethLabel}',
+          detail: [
+            procedure.classificationLabel,
+            procedure.teethLabel,
+            if (procedure.sinusLiftLabel != null) procedure.sinusLiftLabel!,
+          ].join(' · '),
           procedureId: procedure.id,
         ),
         for (final visit in procedure.visits)
@@ -458,8 +462,20 @@ class ProcedureViewModel extends RepositoryViewModel {
     repository.updateProcedure(procedure.copyWith(notes: notes));
   }
 
-  void saveSites(List<ToothSite> sites) {
-    repository.updateProcedure(procedure.copyWith(sites: sites));
+  void saveTraceability({
+    required List<ToothSite> sites,
+    required bool sinusLift,
+    SinusLiftTechnique? sinusLiftTechnique,
+    String sinusLiftNote = '',
+  }) {
+    repository.updateProcedure(
+      procedure.copyWith(
+        sites: sites,
+        sinusLift: sinusLift,
+        sinusLiftTechnique: sinusLiftTechnique,
+        sinusLiftNote: sinusLiftNote,
+      ),
+    );
   }
 }
 

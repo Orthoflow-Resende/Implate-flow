@@ -23,7 +23,7 @@ void main() {
         ),
       ],
     );
-    List<ToothSite>? saved;
+    TraceabilityUpdate? saved;
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -50,6 +50,6 @@ void main() {
 
     await tester.tap(find.text('Salvar'));
     await tester.pumpAndSettle();
-    expect(saved!.single.piece!.manufacturer, 'Neodent');
+    expect(saved!.sites.single.piece!.manufacturer, 'Neodent');
   });
 }

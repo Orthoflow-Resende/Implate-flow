@@ -5,8 +5,12 @@ import '../../domain/models.dart';
 
 class GraftDraft {
   GraftOrigin origin = GraftOrigin.biomaterial;
+  GraftProcessing? processing;
+  GraftPresentation? presentation;
   String manufacturer = '';
   String model = '';
+  String productType = '';
+  String granulometry = '';
   String size = '';
   String lot = '';
   String anvisa = '';
@@ -14,11 +18,17 @@ class GraftDraft {
   DateTime? expiresOn;
   String donorSite = '';
 
+  GraftMaterialChoice? get materialChoice => graftMaterialChoice(origin, processing);
+
   GraftDraft copy() {
     return GraftDraft()
       ..origin = origin
+      ..processing = processing
+      ..presentation = presentation
       ..manufacturer = manufacturer
       ..model = model
+      ..productType = productType
+      ..granulometry = granulometry
       ..size = size
       ..lot = lot
       ..anvisa = anvisa
@@ -27,11 +37,89 @@ class GraftDraft {
       ..donorSite = donorSite;
   }
 
+  void selectMaterial(GraftMaterialChoice choice) {
+    presentation = null;
+    granulometry = '';
+    if (choice == GraftMaterialChoice.autogeno) {
+      origin = GraftOrigin.autogeno;
+      processing = null;
+      manufacturer = '';
+      model = '';
+      productType = '';
+      size = '';
+      lot = '';
+      anvisa = '';
+      manufacturedOn = null;
+      expiresOn = null;
+      return;
+    }
+    origin = GraftOrigin.biomaterial;
+    processing = GraftProcessing.liofilizado;
+    donorSite = '';
+    productType = graftProductOf(manufacturer, model)?.type ?? '';
+  }
+
+  void selectManufacturer(String value) {
+    manufacturer = value;
+    model = '';
+    productType = '';
+    presentation = null;
+    granulometry = '';
+  }
+
+  void selectModel(String value) {
+    model = value;
+    final product = graftProductOf(manufacturer, value);
+    productType = product?.type ?? '';
+    if (presentation != null &&
+        product != null &&
+        !product.presentations.contains(presentation)) {
+      presentation = null;
+    }
+    _clearGranulometryUnlessListed(product);
+  }
+
+  void selectPresentation(GraftPresentation value) {
+    final product = graftProductOf(manufacturer, model);
+    if (processing == GraftProcessing.liofilizado &&
+        product != null &&
+        !product.presentations.contains(value)) {
+      return;
+    }
+    presentation = value;
+    if (value == GraftPresentation.bloco) {
+      granulometry = '';
+      return;
+    }
+    _clearGranulometryUnlessListed(graftProductOf(manufacturer, model));
+  }
+
+  void selectGranulometry(String value) {
+    if (presentation != GraftPresentation.po) return;
+    final product = graftProductOf(manufacturer, model);
+    if (product != null && !product.granulometries.contains(value)) return;
+    granulometry = value;
+  }
+
+  void _clearGranulometryUnlessListed(GraftProduct? product) {
+    if (presentation != GraftPresentation.po) {
+      granulometry = '';
+      return;
+    }
+    if (product != null && !product.granulometries.contains(granulometry)) {
+      granulometry = '';
+    }
+  }
+
   GraftMaterial toMaterial() {
     return GraftMaterial(
       origin: origin,
+      processing: processing,
+      presentation: presentation,
       manufacturer: manufacturer,
       model: model,
+      productType: productType,
+      granulometry: granulometry,
       size: size,
       lot: lot,
       anvisa: anvisa,
@@ -44,8 +132,12 @@ class GraftDraft {
   static GraftDraft fromMaterial(GraftMaterial graft) {
     return GraftDraft()
       ..origin = graft.origin
+      ..processing = graft.processing
+      ..presentation = graft.presentation
       ..manufacturer = graft.manufacturer
       ..model = graft.model
+      ..productType = graft.productType
+      ..granulometry = graft.granulometry
       ..size = graft.size
       ..lot = graft.lot
       ..anvisa = graft.anvisa
@@ -113,6 +205,9 @@ class NewProcedureViewModel extends ChangeNotifier {
   Modality? modality;
   ProcedureSubtype? subtype;
   bool associatedGraft = false;
+  bool sinusLift = false;
+  SinusLiftTechnique? sinusLiftTechnique;
+  String sinusLiftNote = '';
   final Set<String> linkedProcedureIds = {};
   Arch arch = Arch.superior;
   final Set<int> selected = {};
@@ -162,21 +257,33 @@ class NewProcedureViewModel extends ChangeNotifier {
       ? (arch == Arch.superior ? Arch.inferior : Arch.superior)
       : null;
 
+  bool get asksSinusLift => modality == Modality.enxerto || associatedGraft;
+
   String? get saveError {
     if (isProsthesis && linkedProcedureIds.isEmpty) {
       return 'Vincule ao menos um implante já registrado.';
     }
-    return null;
+    return sinusLiftIssue(
+      applies: asksSinusLift,
+      sinusLift: sinusLift,
+      technique: sinusLiftTechnique,
+      note: sinusLiftNote,
+    );
   }
 
-  bool get associatedGraftHasData => drafts.values.any(
+  bool get associatedGraftHasData =>
+      sinusLift ||
+      sinusLiftNote.isNotEmpty ||
+      drafts.values.any(
         (draft) => draft.grafts.any(
           (graft) =>
+              graft.materialChoice != null ||
               graft.manufacturer.isNotEmpty ||
               graft.model.isNotEmpty ||
               graft.size.isNotEmpty ||
               graft.donorSite.isNotEmpty ||
-              graft.lot.isNotEmpty,
+              graft.lot.isNotEmpty ||
+              graft.presentation != null,
         ),
       );
 
@@ -206,6 +313,7 @@ class NewProcedureViewModel extends ChangeNotifier {
   void setAssociatedGraft(bool value, {bool discard = false}) {
     if (!value && associatedGraftHasData && !discard) return;
     associatedGraft = value;
+    if (!value) _clearSinusLift();
     for (final draft in drafts.values) {
       draft.withGraft = value;
       if (!value) draft.grafts = [GraftDraft()];
@@ -227,7 +335,34 @@ class NewProcedureViewModel extends ChangeNotifier {
     drafts.clear();
     linkedProcedureIds.clear();
     associatedGraft = false;
+    _clearSinusLift();
     extraReturns.clear();
+  }
+
+  void setSinusLift(bool value) {
+    sinusLift = value;
+    if (!value) {
+      sinusLiftTechnique = null;
+      sinusLiftNote = '';
+    }
+    notifyListeners();
+  }
+
+  void setSinusLiftTechnique(SinusLiftTechnique value) {
+    sinusLiftTechnique = value;
+    if (value != SinusLiftTechnique.outro) sinusLiftNote = '';
+    notifyListeners();
+  }
+
+  void setSinusLiftNote(String value) {
+    sinusLiftNote = value;
+    notifyListeners();
+  }
+
+  void _clearSinusLift() {
+    sinusLift = false;
+    sinusLiftTechnique = null;
+    sinusLiftNote = '';
   }
 
   void chooseArch(Arch value) {
@@ -438,7 +573,10 @@ class NewProcedureViewModel extends ChangeNotifier {
 
   List<Procedure> save() {
     final current = modality!;
-    final grouped = subtype == ProcedureSubtype.ponte || subtype == ProcedureSubtype.protocolo;
+    final grouped = subtype == ProcedureSubtype.ponte ||
+        subtype == ProcedureSubtype.protocolo ||
+        current == Modality.enxerto;
+    final recordSinus = current == Modality.enxerto || (isImplant && associatedGraft);
     final groups = grouped ? [ordered] : pillars.map((tooth) => [tooth]).toList();
     final created = <Procedure>[];
     for (final teeth in groups) {
@@ -449,6 +587,9 @@ class NewProcedureViewModel extends ChangeNotifier {
           modality: current,
           subtype: subtype,
           associatedGraft: isImplant && associatedGraft,
+          sinusLift: recordSinus && sinusLift,
+          sinusLiftTechnique: recordSinus && sinusLift ? sinusLiftTechnique : null,
+          sinusLiftNote: recordSinus && sinusLift ? sinusLiftNote.trim() : '',
           linkedProcedureIds: isProsthesis ? linkedProcedureIds.toList() : const [],
           arch: subtype == ProcedureSubtype.protocolo ? arch : null,
           surgeryDate: surgery,
