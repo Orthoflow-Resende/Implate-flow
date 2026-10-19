@@ -43,7 +43,7 @@ class MockClinicRepository implements ClinicRepository {
   @override
   void applyOverdueNotices() {
     _delayNoticeFollowUpIds.clear();
-    final today = dateOnly(DateTime.now());
+    final today = brasiliaToday();
     var changed = false;
     final procedures = <Procedure>[];
     for (final procedure in _snapshot.procedures) {

@@ -50,6 +50,86 @@ List<FollowUp> scheduledFollowUps(List<Procedure> procedures) {
   ]..sort((a, b) => a.date.compareTo(b.date));
 }
 
+enum ReportFilter { atrasados, faltas, proximos, realizados }
+
+String reportFilterLabel(ReportFilter filter) => switch (filter) {
+      ReportFilter.atrasados => 'Pacientes em atraso',
+      ReportFilter.faltas => 'Faltas',
+      ReportFilter.proximos => 'Próximos retornos',
+      ReportFilter.realizados => 'Realizados',
+    };
+
+ReportFilter reportFilterFromName(String? name) =>
+    ReportFilter.values.asNameMap()[name] ?? ReportFilter.atrasados;
+
+bool followUpMatchesReport(FollowUp followUp, ReportFilter filter, DateTime today) {
+  final day = dateOnly(followUp.date);
+  final current = dateOnly(today);
+  return switch (filter) {
+    ReportFilter.atrasados =>
+      followUp.status == ReturnStatus.agendado && day.isBefore(current),
+    ReportFilter.faltas => followUp.status == ReturnStatus.faltou,
+    ReportFilter.proximos =>
+      followUp.status == ReturnStatus.agendado && !day.isBefore(current),
+    ReportFilter.realizados => followUp.status == ReturnStatus.realizado,
+  };
+}
+
+List<Patient> patientsForReport(
+  List<Procedure> procedures,
+  List<Patient> patients,
+  ReportFilter filter,
+  DateTime today,
+) {
+  final ids = <String>{
+    for (final procedure in procedures)
+      if (procedure.followUps.any((item) => followUpMatchesReport(item, filter, today)))
+        procedure.patientId,
+  };
+  return patients.where((patient) => ids.contains(patient.id)).toList()
+    ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+}
+
+List<({Procedure procedure, FollowUp followUp})> reportFollowUps(
+  List<Procedure> procedures,
+  String patientId,
+  ReportFilter filter,
+  DateTime today,
+) {
+  return [
+    for (final procedure in procedures)
+      if (procedure.patientId == patientId)
+        for (final followUp in procedure.followUps)
+          if (followUpMatchesReport(followUp, filter, today))
+            (procedure: procedure, followUp: followUp),
+  ]..sort((a, b) => a.followUp.date.compareTo(b.followUp.date));
+}
+
+List<FollowUp> followUpsInNextDays(List<Procedure> procedures, DateTime today, {int days = 7}) {
+  final start = dateOnly(today);
+  final end = start.add(Duration(days: days));
+  return scheduledFollowUps(procedures).where((followUp) {
+    final day = dateOnly(followUp.date);
+    return day.isAfter(start) && !day.isAfter(end);
+  }).toList();
+}
+
+List<FollowUp> schedulingReminders({
+  required List<Procedure> procedures,
+  required DateTime day,
+  required bool remindersEnabled,
+}) {
+  if (!remindersEnabled) return const [];
+  final seen = <String>{};
+  return [
+    for (final followUp in scheduledFollowUps(procedures))
+      if (followUp.reminderEnabled &&
+          sameDay(followUp.reminderOn, day) &&
+          seen.add(followUp.id))
+        followUp,
+  ];
+}
+
 List<CalendarMark> marksInMonth(List<Procedure> procedures, List<Patient> patients, DateTime month) {
   Patient patientById(String id) => patients.firstWhere((patient) => patient.id == id);
   final marks = <CalendarMark>[];
@@ -93,7 +173,7 @@ List<CalendarMark> marksInMonth(List<Procedure> procedures, List<Patient> patien
             procedureId: procedure.id,
             returnStatus: followUp.status,
             overdue: followUp.status == ReturnStatus.agendado &&
-                dateOnly(followUp.date).isBefore(dateOnly(DateTime.now())),
+                dateOnly(followUp.date).isBefore(brasiliaToday()),
           ),
         );
       }

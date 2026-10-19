@@ -99,7 +99,9 @@ class PatientScreen extends StatelessWidget {
                 child: ListTile(
                   title: Text(formatDay(followUp.date)),
                   subtitle: Text(
-                    '${returnReasonLabel(followUp.reason)} · lembrete ${followUp.reminderEnabled ? '${followUp.reminderHour}h' : 'desligado'}',
+                    followUp.reason == ReturnReason.sutura
+                        ? returnReasonLabel(followUp.reason)
+                        : '${returnReasonLabel(followUp.reason)} · lembrete ${followUp.reminderEnabled ? reminderLeadLabel(followUp.reminderDaysBefore) : 'desligado'}',
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {

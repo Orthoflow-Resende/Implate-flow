@@ -92,10 +92,8 @@ class PieceDraft {
 class NewProcedureViewModel extends ChangeNotifier {
   NewProcedureViewModel(this.repository, {required this.patientId}) {
     final profile = repository.current.profile;
-    sutureReminder = profile.reminderEnabled;
     longReminder = profile.reminderEnabled;
-    sutureHour = profile.reminderHour;
-    longHour = profile.reminderHour;
+    longLead = profile.reminderDaysBefore;
   }
 
   final ClinicRepository repository;
@@ -110,10 +108,8 @@ class NewProcedureViewModel extends ChangeNotifier {
   DateTime surgery = dateOnly(DateTime.now());
   late DateTime suture = surgery.add(const Duration(days: 7));
   late DateTime longReturn = surgery.add(const Duration(days: 90));
-  late bool sutureReminder;
   late bool longReminder;
-  late int sutureHour;
-  late int longHour;
+  late int longLead;
 
   List<int> get ordered => selected.toList()..sort(compareTeeth);
 
@@ -228,23 +224,13 @@ class NewProcedureViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setSutureReminder(bool value) {
-    sutureReminder = value;
-    notifyListeners();
-  }
-
   void setLongReminder(bool value) {
     longReminder = value;
     notifyListeners();
   }
 
-  void setSutureHour(int value) {
-    sutureHour = value;
-    notifyListeners();
-  }
-
-  void setLongHour(int value) {
-    longHour = value;
+  void setLongLead(int value) {
+    longLead = normalizeReminderDaysBefore(value);
     notifyListeners();
   }
 
@@ -327,8 +313,7 @@ class NewProcedureViewModel extends ChangeNotifier {
               date: suture,
               reason: ReturnReason.sutura,
               status: ReturnStatus.agendado,
-              reminderEnabled: sutureReminder,
-              reminderHour: sutureHour,
+              reminderEnabled: false,
             ),
             FollowUp(
               id: repository.allocateId('ret'),
@@ -336,7 +321,7 @@ class NewProcedureViewModel extends ChangeNotifier {
               reason: longReason,
               status: ReturnStatus.agendado,
               reminderEnabled: longReminder,
-              reminderHour: longHour,
+              reminderDaysBefore: longLead,
             ),
           ],
         ),

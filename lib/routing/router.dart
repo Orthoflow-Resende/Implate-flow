@@ -3,7 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../data/repositories/clinic_repository.dart';
 import '../ui/calendar/calendar_screen.dart';
+import '../domain/queries.dart';
 import '../ui/home/home_screen.dart';
+import '../ui/home/next_week_screen.dart';
+import '../ui/home/today_reminders_screen.dart';
+import '../ui/reports/reports_screen.dart';
 import '../ui/login/login_screen.dart';
 import '../ui/new_procedure/new_procedure_screen.dart';
 import '../ui/new_procedure/new_procedure_viewmodel.dart';
@@ -109,6 +113,30 @@ GoRouter buildRouter(SessionViewModel session) {
             ),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/reports',
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => ReportsViewModel(
+            context.read<ClinicRepository>(),
+            filter: reportFilterFromName(state.uri.queryParameters['filtro']),
+          ),
+          child: const ReportsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/week',
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => NextWeekViewModel(context.read<ClinicRepository>()),
+          child: const NextWeekScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/reminders',
+        builder: (context, state) => ChangeNotifierProvider(
+          create: (context) => TodayRemindersViewModel(context.read<ClinicRepository>()),
+          child: const TodayRemindersScreen(),
+        ),
       ),
       GoRoute(
         path: '/profile',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../domain/models.dart';
 import '../core/layout.dart';
 import '../view_models.dart';
 
@@ -38,7 +39,7 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 20),
           const AppSectionHeader(
             title: 'Lembrete do retorno',
-            subtitle: 'Canais ficam gravados. E-mail e push reais entram depois.',
+            subtitle: 'O aviso sai antes da data de retorno. O padrão é 15 dias.',
           ),
           const SizedBox(height: 8),
           AppSurfaceCard(
@@ -46,7 +47,7 @@ class ProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SwitchListTile(
-                  title: const Text('Avisar no dia'),
+                  title: const Text('Lembrar antes do retorno'),
                   value: profile.reminderEnabled,
                   onChanged: viewModel.setReminderEnabled,
                 ),
@@ -55,12 +56,13 @@ class ProfileScreen extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: Wrap(
                       spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        for (final hour in [7, 8, 9, 12, 18])
+                        for (final days in reminderLeadDayOptions)
                           ChoiceChip(
-                            label: Text('${hour}h'),
-                            selected: profile.reminderHour == hour,
-                            onSelected: (_) => viewModel.setReminderHour(hour),
+                            label: Text(reminderLeadLabel(days)),
+                            selected: profile.reminderDaysBefore == days,
+                            onSelected: (_) => viewModel.setReminderDaysBefore(days),
                           ),
                       ],
                     ),
@@ -89,7 +91,10 @@ class ProfileScreen extends StatelessWidget {
                   )
                 : const Icon(Icons.logout),
             label: const Text('Sair'),
-            style: OutlinedButton.styleFrom(foregroundColor: scheme.error),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: scheme.error,
+              side: BorderSide(color: scheme.error),
+            ),
           ),
         ],
       ),

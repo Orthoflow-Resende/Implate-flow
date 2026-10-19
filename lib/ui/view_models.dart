@@ -88,41 +88,38 @@ class HomeViewModel extends RepositoryViewModel {
 
   DentistProfile get profile => snapshot.profile;
 
+  DateTime get agendaToday => brasiliaToday();
+
   List<FollowUp> _scheduledOn(bool Function(DateTime day) test) {
     return scheduledFollowUps(snapshot.procedures).where((item) => test(dateOnly(item.date))).toList();
   }
 
-  List<FollowUp> get overdue =>
-      _scheduledOn((day) => day.isBefore(dateOnly(DateTime.now())));
+  List<FollowUp> get today => _scheduledOn((day) => sameDay(day, agendaToday));
 
-  List<FollowUp> get today =>
-      _scheduledOn((day) => sameDay(day, dateOnly(DateTime.now())));
+  List<FollowUp> get nextWeek => followUpsInNextDays(snapshot.procedures, agendaToday);
 
-  List<FollowUp> get nextWeek {
-    final start = dateOnly(DateTime.now());
-    final end = start.add(const Duration(days: 7));
-    return _scheduledOn((day) => day.isAfter(start) && !day.isAfter(end));
-  }
+  int get nextWeekCount => nextWeek.length;
+
+  int get overduePatientCount => patientsForReport(
+        snapshot.procedures,
+        snapshot.patients,
+        ReportFilter.atrasados,
+        agendaToday,
+      ).length;
+
+  List<FollowUp> get todayReminders => schedulingReminders(
+        procedures: snapshot.procedures,
+        day: agendaToday,
+        remindersEnabled: profile.reminderEnabled,
+      );
+
+  int get todayReminderCount => todayReminders.length;
 
   Procedure? procedureOf(String followUpId) =>
       procedureOfFollowUp(snapshot.procedures, followUpId);
 
   Patient patientOf(String patientId) =>
       snapshot.patients.firstWhere((patient) => patient.id == patientId);
-
-  List<FollowUp> get todayReminders {
-    if (!profile.reminderEnabled) return const [];
-    return today.where((item) => item.reminderEnabled).toList();
-  }
-
-  List<FollowUp> get delayNotices {
-    final ids = repository.delayNoticeFollowUpIds;
-    return [
-      for (final procedure in snapshot.procedures)
-        for (final followUp in procedure.followUps)
-          if (ids.contains(followUp.id)) followUp,
-    ];
-  }
 
   List<Patient> patientsMatching(String query) => matchPatients(snapshot.patients, query);
 }
@@ -206,9 +203,56 @@ class PatientViewModel extends RepositoryViewModel {
   }
 }
 
+class ReportsViewModel extends RepositoryViewModel {
+  ReportsViewModel(super.repository, {this.filter = ReportFilter.atrasados});
+
+  ReportFilter filter;
+
+  DateTime get today => brasiliaToday();
+
+  List<Patient> get patients =>
+      patientsForReport(snapshot.procedures, snapshot.patients, filter, today);
+
+  List<({Procedure procedure, FollowUp followUp})> rowsFor(String patientId) =>
+      reportFollowUps(snapshot.procedures, patientId, filter, today);
+
+  void setFilter(ReportFilter value) {
+    filter = value;
+    notifyListeners();
+  }
+}
+
+class NextWeekViewModel extends RepositoryViewModel {
+  NextWeekViewModel(super.repository);
+
+  List<FollowUp> get followUps => followUpsInNextDays(snapshot.procedures, brasiliaToday());
+
+  Procedure? procedureOf(String followUpId) =>
+      procedureOfFollowUp(snapshot.procedures, followUpId);
+
+  Patient patientOf(String patientId) =>
+      snapshot.patients.firstWhere((patient) => patient.id == patientId);
+}
+
+class TodayRemindersViewModel extends RepositoryViewModel {
+  TodayRemindersViewModel(super.repository);
+
+  List<FollowUp> get reminders => schedulingReminders(
+        procedures: snapshot.procedures,
+        day: brasiliaToday(),
+        remindersEnabled: snapshot.profile.reminderEnabled,
+      );
+
+  Procedure? procedureOf(String followUpId) =>
+      procedureOfFollowUp(snapshot.procedures, followUpId);
+
+  Patient patientOf(String patientId) =>
+      snapshot.patients.firstWhere((patient) => patient.id == patientId);
+}
+
 class CalendarViewModel extends RepositoryViewModel {
   CalendarViewModel(super.repository) {
-    final today = dateOnly(DateTime.now());
+    final today = brasiliaToday();
     month = DateTime(today.year, today.month);
     selected = today;
   }
@@ -321,7 +365,9 @@ class ProfileViewModel extends RepositoryViewModel {
   void setReminderEnabled(bool value) =>
       repository.updateProfile(profile.copyWith(reminderEnabled: value));
 
-  void setReminderHour(int value) => repository.updateProfile(profile.copyWith(reminderHour: value));
+  void setReminderDaysBefore(int value) => repository.updateProfile(
+        profile.copyWith(reminderDaysBefore: normalizeReminderDaysBefore(value)),
+      );
 
   void setEmailChannel(bool value) => repository.updateProfile(profile.copyWith(emailChannel: value));
 

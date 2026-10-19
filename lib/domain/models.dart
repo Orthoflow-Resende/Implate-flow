@@ -174,13 +174,20 @@ String returnStatusLabel(ReturnStatus status) => switch (status) {
       ReturnStatus.faltou => 'Faltou',
     };
 
+const defaultReminderDaysBefore = 15;
+
+const reminderLeadDayOptions = <int>[7, 15, 30];
+
+int normalizeReminderDaysBefore(int days) =>
+    days < 1 ? defaultReminderDaysBefore : days;
+
 class DentistProfile {
   const DentistProfile({
     required this.name,
     required this.email,
     this.cro = '',
     this.reminderEnabled = true,
-    this.reminderHour = 8,
+    this.reminderDaysBefore = defaultReminderDaysBefore,
     this.emailChannel = true,
     this.pushChannel = true,
   });
@@ -189,7 +196,7 @@ class DentistProfile {
   final String email;
   final String cro;
   final bool reminderEnabled;
-  final int reminderHour;
+  final int reminderDaysBefore;
   final bool emailChannel;
   final bool pushChannel;
 
@@ -198,7 +205,7 @@ class DentistProfile {
     String? email,
     String? cro,
     bool? reminderEnabled,
-    int? reminderHour,
+    int? reminderDaysBefore,
     bool? emailChannel,
     bool? pushChannel,
   }) {
@@ -207,7 +214,7 @@ class DentistProfile {
       email: email ?? this.email,
       cro: cro ?? this.cro,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
-      reminderHour: reminderHour ?? this.reminderHour,
+      reminderDaysBefore: reminderDaysBefore ?? this.reminderDaysBefore,
       emailChannel: emailChannel ?? this.emailChannel,
       pushChannel: pushChannel ?? this.pushChannel,
     );
@@ -372,7 +379,7 @@ class FollowUp {
     required this.reason,
     required this.status,
     required this.reminderEnabled,
-    required this.reminderHour,
+    this.reminderDaysBefore = defaultReminderDaysBefore,
     this.overdueNotified = false,
   });
 
@@ -381,15 +388,17 @@ class FollowUp {
   final ReturnReason reason;
   final ReturnStatus status;
   final bool reminderEnabled;
-  final int reminderHour;
+  final int reminderDaysBefore;
   final bool overdueNotified;
+
+  DateTime get reminderOn => dateOnly(date).subtract(Duration(days: reminderDaysBefore));
 
   FollowUp copyWith({
     DateTime? date,
     ReturnReason? reason,
     ReturnStatus? status,
     bool? reminderEnabled,
-    int? reminderHour,
+    int? reminderDaysBefore,
     bool? overdueNotified,
   }) {
     return FollowUp(
@@ -398,7 +407,7 @@ class FollowUp {
       reason: reason ?? this.reason,
       status: status ?? this.status,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
-      reminderHour: reminderHour ?? this.reminderHour,
+      reminderDaysBefore: reminderDaysBefore ?? this.reminderDaysBefore,
       overdueNotified: overdueNotified ?? this.overdueNotified,
     );
   }
@@ -522,6 +531,13 @@ String formatDay(DateTime date) {
 
 DateTime dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
 
+/// Civil day in America/Sao_Paulo. Brasília stays at UTC−3, without daylight saving.
+DateTime brasiliaToday([DateTime? instant]) {
+  final utc = (instant ?? DateTime.now()).toUtc();
+  final civil = utc.subtract(const Duration(hours: 3));
+  return DateTime(civil.year, civil.month, civil.day);
+}
+
 bool sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
@@ -540,4 +556,9 @@ String reminderLine({
   required FollowUp followUp,
 }) {
   return '${patient.name}, ${procedure.teethLabel}, ${returnReasonLabel(followUp.reason)}';
+}
+
+String reminderLeadLabel(int days) {
+  final span = days == 1 ? '1 dia' : '$days dias';
+  return '$span antes';
 }

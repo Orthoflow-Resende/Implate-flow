@@ -21,7 +21,7 @@ Map<String, dynamic> snapshotToJson(ClinicSnapshot snapshot) {
       'email': snapshot.profile.email,
       'cro': snapshot.profile.cro,
       'reminderEnabled': snapshot.profile.reminderEnabled,
-      'reminderHour': snapshot.profile.reminderHour,
+      'reminderDaysBefore': snapshot.profile.reminderDaysBefore,
       'emailChannel': snapshot.profile.emailChannel,
       'pushChannel': snapshot.profile.pushChannel,
     },
@@ -52,7 +52,7 @@ ClinicSnapshot snapshotFromJson(Map<String, dynamic> json) {
       email: json['profile']?['email'] as String? ?? '',
       cro: json['profile']?['cro'] as String? ?? '',
       reminderEnabled: json['profile']?['reminderEnabled'] as bool? ?? true,
-      reminderHour: json['profile']?['reminderHour'] as int? ?? 8,
+      reminderDaysBefore: _reminderDays(json['profile']),
       emailChannel: json['profile']?['emailChannel'] as bool? ?? true,
       pushChannel: json['profile']?['pushChannel'] as bool? ?? true,
     ),
@@ -112,7 +112,7 @@ Map<String, dynamic> _procedureToJson(Procedure procedure) {
           'reason': followUp.reason.name,
           'status': followUp.status.name,
           'reminderEnabled': followUp.reminderEnabled,
-          'reminderHour': followUp.reminderHour,
+          'reminderDaysBefore': followUp.reminderDaysBefore,
           'overdueNotified': followUp.overdueNotified,
         },
     ],
@@ -170,7 +170,7 @@ Procedure _procedureFromJson(Map<String, dynamic> json) {
           reason: ReturnReason.values.byName(item['reason'] as String),
           status: ReturnStatus.values.byName(item['status'] as String),
           reminderEnabled: item['reminderEnabled'] as bool? ?? true,
-          reminderHour: item['reminderHour'] as int? ?? 8,
+          reminderDaysBefore: _reminderDays(item),
           overdueNotified: item['overdueNotified'] as bool? ?? false,
         ),
     ],
@@ -250,3 +250,10 @@ DateTime _parseDate(String value) => DateTime.parse(value);
 
 DateTime? _parseDateOrNull(String? value) =>
     value == null || value.isEmpty ? null : DateTime.parse(value);
+
+int _reminderDays(Object? json) {
+  if (json is! Map) return defaultReminderDaysBefore;
+  final raw = json['reminderDaysBefore'];
+  if (raw is! int) return defaultReminderDaysBefore;
+  return normalizeReminderDaysBefore(raw);
+}

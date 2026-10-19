@@ -13,7 +13,7 @@ ClinicSnapshot buildDemoSnapshot() {
   }
   final patients = <Patient>[];
   final procedures = <Procedure>[];
-    final today = dateOnly(DateTime.now());
+    final today = brasiliaToday();
     DateTime shift(int days) => today.add(Duration(days: days));
 
     final maria = Patient(
@@ -84,8 +84,8 @@ ClinicSnapshot buildDemoSnapshot() {
             date: shift(-33),
             reason: ReturnReason.sutura,
             status: ReturnStatus.realizado,
-            reminderEnabled: true,
-            reminderHour: 8,
+            reminderEnabled: false,
+            reminderDaysBefore: defaultReminderDaysBefore,
           ),
           FollowUp(
             id: nextId('ret'),
@@ -93,7 +93,7 @@ ClinicSnapshot buildDemoSnapshot() {
             reason: ReturnReason.osseointegracao,
             status: ReturnStatus.agendado,
             reminderEnabled: true,
-            reminderHour: 8,
+            reminderDaysBefore: defaultReminderDaysBefore,
           ),
         ],
         photos: [
@@ -141,11 +141,11 @@ ClinicSnapshot buildDemoSnapshot() {
         followUps: [
           FollowUp(
             id: nextId('ret'),
-            date: shift(1),
+            date: today,
             reason: ReturnReason.sutura,
             status: ReturnStatus.agendado,
-            reminderEnabled: true,
-            reminderHour: 8,
+            reminderEnabled: false,
+            reminderDaysBefore: defaultReminderDaysBefore,
           ),
           FollowUp(
             id: nextId('ret'),
@@ -153,7 +153,7 @@ ClinicSnapshot buildDemoSnapshot() {
             reason: ReturnReason.instalarPonte,
             status: ReturnStatus.agendado,
             reminderEnabled: true,
-            reminderHour: 9,
+            reminderDaysBefore: 30,
           ),
         ],
       ),
@@ -199,8 +199,8 @@ ClinicSnapshot buildDemoSnapshot() {
             date: today,
             reason: ReturnReason.sutura,
             status: ReturnStatus.agendado,
-            reminderEnabled: true,
-            reminderHour: 8,
+            reminderEnabled: false,
+            reminderDaysBefore: defaultReminderDaysBefore,
           ),
           FollowUp(
             id: nextId('ret'),
@@ -208,7 +208,7 @@ ClinicSnapshot buildDemoSnapshot() {
             reason: ReturnReason.instalarProtocolo,
             status: ReturnStatus.agendado,
             reminderEnabled: false,
-            reminderHour: 8,
+            reminderDaysBefore: defaultReminderDaysBefore,
           ),
         ],
         photos: [
@@ -239,11 +239,11 @@ ClinicSnapshot buildDemoSnapshot() {
         followUps: [
           FollowUp(
             id: nextId('ret'),
-            date: shift(14),
+            date: today,
             reason: ReturnReason.sutura,
             status: ReturnStatus.agendado,
-            reminderEnabled: true,
-            reminderHour: 8,
+            reminderEnabled: false,
+            reminderDaysBefore: defaultReminderDaysBefore,
           ),
           FollowUp(
             id: nextId('ret'),
@@ -251,7 +251,7 @@ ClinicSnapshot buildDemoSnapshot() {
             reason: ReturnReason.instalarImplante,
             status: ReturnStatus.agendado,
             reminderEnabled: true,
-            reminderHour: 8,
+            reminderDaysBefore: defaultReminderDaysBefore,
           ),
         ],
       ),

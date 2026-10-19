@@ -33,36 +33,42 @@ class HomeScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
         children: [
-          _AgendaSection(
-            title: 'Lembretes de hoje',
-            empty: 'Nenhum lembrete hoje.',
-            items: viewModel.todayReminders,
-            viewModel: viewModel,
-            reminder: true,
+          SizedBox(
+            height: 112,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _CountCard(
+                    label: 'Atraso',
+                    count: viewModel.overduePatientCount,
+                    onTap: () => context.push('/reports?filtro=atrasados'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _CountCard(
+                    label: 'Lembretes',
+                    count: viewModel.todayReminderCount,
+                    onTap: () => context.push('/reminders'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _CountCard(
+                    label: 'Próximos 7 dias',
+                    count: viewModel.nextWeekCount,
+                    onTap: () => context.push('/week'),
+                  ),
+                ),
+              ],
+            ),
           ),
-          _AgendaSection(
-            title: 'Aviso de atraso',
-            empty: 'Nenhum aviso novo.',
-            items: viewModel.delayNotices,
-            viewModel: viewModel,
-            delay: true,
-          ),
-          _AgendaSection(
-            title: 'Atrasados',
-            empty: 'Nenhum retorno atrasado.',
-            items: viewModel.overdue,
-            viewModel: viewModel,
-          ),
+          const SizedBox(height: 20),
           _AgendaSection(
             title: 'Hoje',
             empty: 'Nenhum retorno hoje.',
             items: viewModel.today,
-            viewModel: viewModel,
-          ),
-          _AgendaSection(
-            title: 'Próximos 7 dias',
-            empty: 'Nada nos próximos 7 dias.',
-            items: viewModel.nextWeek,
             viewModel: viewModel,
           ),
         ],
@@ -82,22 +88,55 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+class _CountCard extends StatelessWidget {
+  const _CountCard({required this.label, required this.count, required this.onTap});
+
+  final String label;
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Semantics(
+      button: true,
+      container: true,
+      excludeSemantics: true,
+      label: '$label, $count',
+      child: AppSurfaceCard(
+        onTap: onTap,
+        padding: const EdgeInsets.fromLTRB(8, 14, 8, 12),
+        child: Column(
+          children: [
+            Text(
+              '$count',
+              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const Spacer(),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _AgendaSection extends StatelessWidget {
   const _AgendaSection({
     required this.title,
     required this.empty,
     required this.items,
     required this.viewModel,
-    this.reminder = false,
-    this.delay = false,
   });
 
   final String title;
   final String empty;
   final List<FollowUp> items;
   final HomeViewModel viewModel;
-  final bool reminder;
-  final bool delay;
 
   @override
   Widget build(BuildContext context) {
@@ -112,12 +151,7 @@ class _AgendaSection extends StatelessWidget {
             AppEmptyHint(empty)
           else
             for (final followUp in items) ...[
-              _ReturnTile(
-                viewModel: viewModel,
-                followUp: followUp,
-                reminder: reminder,
-                delay: delay,
-              ),
+              _ReturnTile(viewModel: viewModel, followUp: followUp),
               const SizedBox(height: 8),
             ],
         ],
@@ -220,33 +254,22 @@ class _PatientPickerState extends State<_PatientPicker> {
 }
 
 class _ReturnTile extends StatelessWidget {
-  const _ReturnTile({
-    required this.viewModel,
-    required this.followUp,
-    this.reminder = false,
-    this.delay = false,
-  });
+  const _ReturnTile({required this.viewModel, required this.followUp});
 
   final HomeViewModel viewModel;
   final FollowUp followUp;
-  final bool reminder;
-  final bool delay;
 
   @override
   Widget build(BuildContext context) {
     final procedure = viewModel.procedureOf(followUp.id);
     if (procedure == null) return const SizedBox.shrink();
     final patient = viewModel.patientOf(procedure.patientId);
-    final line = reminderLine(patient: patient, procedure: procedure, followUp: followUp);
     return AppSurfaceCard(
-      color: delay ? Theme.of(context).colorScheme.errorContainer : null,
       child: ListTile(
-        title: Text(reminder || delay ? line : patient.name),
-        subtitle: reminder || delay
-            ? Text(formatDay(followUp.date))
-            : Text(
-                '${formatDay(followUp.date)} · ${returnReasonLabel(followUp.reason)} · ${procedure.teethLabel}',
-              ),
+        title: Text(patient.name),
+        subtitle: Text(
+          '${formatDay(followUp.date)} · ${returnReasonLabel(followUp.reason)} · ${procedure.teethLabel}',
+        ),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => context.push('/procedures/${procedure.id}'),
       ),

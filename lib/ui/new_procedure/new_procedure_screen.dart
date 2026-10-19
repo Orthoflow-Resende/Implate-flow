@@ -183,21 +183,17 @@ class _SummaryStep extends StatelessWidget {
               _ReturnEditor(
                 title: 'Sutura',
                 date: viewModel.suture,
-                enabled: viewModel.sutureReminder,
-                hour: viewModel.sutureHour,
                 onDate: viewModel.setSuture,
-                onEnabled: viewModel.setSutureReminder,
-                onHour: viewModel.setSutureHour,
               ),
               const SizedBox(height: 12),
               _ReturnEditor(
                 title: 'Retorno longo',
                 date: viewModel.longReturn,
                 enabled: viewModel.longReminder,
-                hour: viewModel.longHour,
+                daysBefore: viewModel.longLead,
                 onDate: viewModel.setLongReturn,
                 onEnabled: viewModel.setLongReminder,
-                onHour: viewModel.setLongHour,
+                onDaysBefore: viewModel.setLongLead,
               ),
             ],
           ),
@@ -580,59 +576,79 @@ class _ReturnEditor extends StatelessWidget {
   const _ReturnEditor({
     required this.title,
     required this.date,
-    required this.enabled,
-    required this.hour,
     required this.onDate,
-    required this.onEnabled,
-    required this.onHour,
+    this.enabled,
+    this.daysBefore,
+    this.onEnabled,
+    this.onDaysBefore,
   });
 
   final String title;
   final DateTime date;
-  final bool enabled;
-  final int hour;
+  final bool? enabled;
+  final int? daysBefore;
   final ValueChanged<DateTime> onDate;
-  final ValueChanged<bool> onEnabled;
-  final ValueChanged<int> onHour;
+  final ValueChanged<bool>? onEnabled;
+  final ValueChanged<int>? onDaysBefore;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final reminding = enabled;
+    final lead = daysBefore;
+    final toggle = onEnabled;
+    final changeLead = onDaysBefore;
     return Card(
       elevation: 0,
-      color: Theme.of(context).colorScheme.surface,
+      color: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+              child: Text(title, style: theme.textTheme.titleMedium),
+            ),
             _DateTile(
               icon: Icons.event_outlined,
-              label: title,
+              label: 'Data de retorno',
               value: formatDay(date),
               onTap: () => _pickDate(context, date, onDate),
             ),
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              title: const Text('Lembrete'),
-              value: enabled,
-              onChanged: onEnabled,
-            ),
-            if (enabled)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
-                child: Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final option in [7, 8, 9, 12, 18])
-                      ChoiceChip(
-                        label: Text('${option}h'),
-                        selected: hour == option,
-                        onSelected: (_) => onHour(option),
-                      ),
-                  ],
-                ),
+            if (reminding != null && lead != null && toggle != null && changeLead != null) ...[
+              SwitchListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                title: const Text('Lembrete'),
+                value: reminding,
+                onChanged: toggle,
               ),
+              if (reminding) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final option in reminderLeadDayOptions)
+                        ChoiceChip(
+                          label: Text(reminderLeadLabel(option)),
+                          selected: lead == option,
+                          onSelected: (_) => changeLead(option),
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                  child: Text(
+                    'Avisa em ${formatDay(dateOnly(date).subtract(Duration(days: lead)))}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ],
           ],
         ),
       ),
