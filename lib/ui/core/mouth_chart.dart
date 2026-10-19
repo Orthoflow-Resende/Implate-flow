@@ -1,3 +1,5 @@
+import 'dart:ui' show PathMetric;
+
 import 'package:flutter/material.dart';
 import 'package:path_drawing/path_drawing.dart';
 import 'package:xml/xml.dart';
@@ -42,6 +44,7 @@ class MouthChart extends StatelessWidget {
                       decoration: ShapeDecoration(
                         color: _fill(scheme, tooth.fdi),
                         shape: _ToothBorder(
+                          tooth.silhouette,
                           tooth.path,
                           color: _stroke(scheme, tooth.fdi),
                         ),
@@ -97,18 +100,57 @@ final _permanentTeeth = _loadPermanentTeeth();
 class _ParsedTooth {
   _ParsedTooth(this.fdi, Path original) {
     rect = original.getBounds();
-    path = original.shift(-rect.topLeft);
+    final shift = -rect.topLeft;
+    path = original.shift(shift);
+    silhouette = _outerContour(original).shift(shift);
   }
 
   final int fdi;
   late final Rect rect;
   late final Path path;
+  late final Path silhouette;
+}
+
+/// Outer silhouette of a compound tooth path. Groove subpaths punch holes in
+/// the fill, so a tap in the middle of the tooth used to miss.
+Path _outerContour(Path source) {
+  Path? outer;
+  var largest = -1.0;
+  for (final metric in source.computeMetrics()) {
+    final contour = metric.extractPath(0, metric.length);
+    if (metric.isClosed) contour.close();
+    final area = _sampledArea(metric);
+    if (area > largest) {
+      largest = area;
+      outer = contour;
+    }
+  }
+  return Path.from(outer ?? source)..fillType = PathFillType.nonZero;
+}
+
+double _sampledArea(PathMetric metric) {
+  if (metric.length == 0) return 0;
+  final points = <Offset>[];
+  const step = 1.5;
+  for (var distance = 0.0; distance < metric.length; distance += step) {
+    final tangent = metric.getTangentForOffset(distance);
+    if (tangent != null) points.add(tangent.position);
+  }
+  if (points.length < 3) return 0;
+  var sum = 0.0;
+  for (var i = 0; i < points.length; i++) {
+    final a = points[i];
+    final b = points[(i + 1) % points.length];
+    sum += a.dx * b.dy - b.dx * a.dy;
+  }
+  return sum.abs() / 2;
 }
 
 class _ToothBorder extends ShapeBorder {
-  const _ToothBorder(this.path, {required this.color});
+  const _ToothBorder(this.silhouette, this.detail, {required this.color});
 
-  final Path path;
+  final Path silhouette;
+  final Path detail;
   final Color color;
 
   @override
@@ -119,13 +161,14 @@ class _ToothBorder extends ShapeBorder {
 
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
-    return rect.topLeft == Offset.zero ? path : path.shift(rect.topLeft);
+    return rect.topLeft == Offset.zero ? silhouette : silhouette.shift(rect.topLeft);
   }
 
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    final outline = rect.topLeft == Offset.zero ? detail : detail.shift(rect.topLeft);
     canvas.drawPath(
-      getOuterPath(rect),
+      outline,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.1
