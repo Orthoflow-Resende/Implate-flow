@@ -260,11 +260,13 @@ class ProcedureScreen extends StatelessWidget {
     Procedure procedure,
     String followUpId,
   ) async {
+    final followUp = procedure.followUps.firstWhere((item) => item.id == followUpId);
     final result = await _consultationDialog(
       context,
       procedure,
       title: 'Registrar retorno',
       withAttendance: true,
+      showStatus: followUp.reason != ReturnReason.sutura,
     );
     if (result == null) return;
     viewModel.completeFollowUp(
@@ -293,63 +295,104 @@ Future<_ConsultationResult?> _consultationDialog(
   Procedure procedure, {
   required String title,
   bool withAttendance = false,
-}) async {
+  bool showStatus = true,
+}) {
   final options = procedure.modality == Modality.enxerto
       ? [for (final status in GraftStatus.values) graftStatusLabel(status)]
       : [for (final status in ImplantStatus.values) implantStatusLabel(status)];
-  var status = options.contains(procedure.statusLabel) ? procedure.statusLabel : options.first;
-  var attendance = ReturnStatus.realizado;
-  final note = TextEditingController();
-  final ok = await showDialog<bool>(
+  final status = options.contains(procedure.statusLabel) ? procedure.statusLabel : options.first;
+  return showDialog<_ConsultationResult>(
     context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setLocal) => AlertDialog(
-        title: Text(title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (withAttendance)
-              SegmentedButton<ReturnStatus>(
-                segments: const [
-                  ButtonSegment(value: ReturnStatus.realizado, label: Text('Realizado')),
-                  ButtonSegment(value: ReturnStatus.faltou, label: Text('Faltou')),
-                ],
-                selected: {attendance},
-                onSelectionChanged: (value) => setLocal(() => attendance = value.first),
-              ),
-            TextField(
-              controller: note,
-              decoration: const InputDecoration(labelText: 'Observação'),
-            ),
-            const SizedBox(height: 12),
-            if (!withAttendance || attendance == ReturnStatus.realizado)
-              DropdownButtonFormField<String>(
-                initialValue: status,
-                decoration: const InputDecoration(labelText: 'Status'),
-                items: [
-                  for (final option in options) DropdownMenuItem(value: option, child: Text(option)),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setLocal(() => status = value);
-                },
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Salvar')),
-        ],
-      ),
+    builder: (context) => _ConsultationDialog(
+      title: title,
+      options: options,
+      initialStatus: status,
+      withAttendance: withAttendance,
+      showStatus: showStatus,
     ),
   );
-  final result = ok == true
-      ? _ConsultationResult(
-          note: note.text,
-          statusLabel: status,
-          attendance: withAttendance ? attendance : ReturnStatus.realizado,
-        )
-      : null;
-  note.dispose();
-  return result;
+}
+
+class _ConsultationDialog extends StatefulWidget {
+  const _ConsultationDialog({
+    required this.title,
+    required this.options,
+    required this.initialStatus,
+    required this.withAttendance,
+    required this.showStatus,
+  });
+
+  final String title;
+  final List<String> options;
+  final String initialStatus;
+  final bool withAttendance;
+  final bool showStatus;
+
+  @override
+  State<_ConsultationDialog> createState() => _ConsultationDialogState();
+}
+
+class _ConsultationDialogState extends State<_ConsultationDialog> {
+  late String status = widget.initialStatus;
+  var attendance = ReturnStatus.realizado;
+  final note = TextEditingController();
+
+  @override
+  void dispose() {
+    note.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final askStatus = widget.showStatus && (!widget.withAttendance || attendance == ReturnStatus.realizado);
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (widget.withAttendance)
+            SegmentedButton<ReturnStatus>(
+              segments: const [
+                ButtonSegment(value: ReturnStatus.realizado, label: Text('Realizado')),
+                ButtonSegment(value: ReturnStatus.faltou, label: Text('Faltou')),
+              ],
+              selected: {attendance},
+              onSelectionChanged: (value) => setState(() => attendance = value.first),
+            ),
+          TextField(
+            controller: note,
+            decoration: const InputDecoration(labelText: 'Observação'),
+          ),
+          const SizedBox(height: 12),
+          if (askStatus)
+            DropdownButtonFormField<String>(
+              initialValue: status,
+              decoration: const InputDecoration(labelText: 'Status'),
+              items: [
+                for (final option in widget.options) DropdownMenuItem(value: option, child: Text(option)),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => status = value);
+              },
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        FilledButton(
+          onPressed: () => Navigator.pop(
+            context,
+            _ConsultationResult(
+              note: note.text,
+              statusLabel: status,
+              attendance: widget.withAttendance ? attendance : ReturnStatus.realizado,
+            ),
+          ),
+          child: const Text('Salvar'),
+        ),
+      ],
+    );
+  }
 }

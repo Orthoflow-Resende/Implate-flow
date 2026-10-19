@@ -172,6 +172,8 @@ class MockClinicRepository implements ClinicRepository {
     final procedure = _procedureOfFollowUp(followUpId);
     if (procedure == null) return;
     final followUp = procedure.followUps.where((item) => item.id == followUpId).first;
+    final updatesClinicalStatus =
+        returnStatus == ReturnStatus.realizado && followUp.reason != ReturnReason.sutura;
     final visits = [...procedure.visits];
     if (returnStatus == ReturnStatus.realizado) {
       visits.add(
@@ -179,13 +181,13 @@ class MockClinicRepository implements ClinicRepository {
           id: allocateId('con'),
           date: DateTime.now(),
           note: note.trim().isEmpty ? returnReasonLabel(followUp.reason) : note.trim(),
-          statusLabel: statusLabel,
+          statusLabel: updatesClinicalStatus ? statusLabel : procedure.statusLabel,
         ),
       );
     }
     _replace(procedure.id, (current) {
       return current.copyWith(
-        statusLabel: returnStatus == ReturnStatus.realizado ? statusLabel : current.statusLabel,
+        statusLabel: updatesClinicalStatus ? statusLabel : current.statusLabel,
         followUps: [
           for (final item in current.followUps)
             if (item.id == followUpId) item.copyWith(status: returnStatus) else item,
