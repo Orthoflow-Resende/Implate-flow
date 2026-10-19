@@ -9,7 +9,12 @@ import 'package:provider/provider.dart';
 
 void main() {
   testWidgets('protocolo mostra Região e conserva o FDI', (tester) async {
-    final viewModel = await _openSummary(tester, Modality.protocolo, [16, 14]);
+    final viewModel = await _openSummary(
+      tester,
+      Modality.implante,
+      [16, 14],
+      subtype: ProcedureSubtype.protocolo,
+    );
 
     expect(find.text('Região 14'), findsOneWidget);
     expect(find.text('Região 16'), findsOneWidget);
@@ -19,11 +24,11 @@ void main() {
   });
 
   testWidgets('unitário, ponte e enxerto continuam com Dente', (tester) async {
-    await _openSummary(tester, Modality.unitario, [11]);
+    await _openSummary(tester, Modality.implante, [11]);
     expect(find.text('Dente 11'), findsOneWidget);
     expect(find.text('Região 11'), findsNothing);
 
-    await _openSummary(tester, Modality.ponte, [14, 15, 16]);
+    await _openSummary(tester, Modality.protese, [14, 15, 16], subtype: ProcedureSubtype.ponte);
     expect(find.text('Dente 14'), findsOneWidget);
     expect(find.text('Dente 16'), findsOneWidget);
     expect(find.text('Região 14'), findsNothing);
@@ -37,12 +42,13 @@ void main() {
 Future<NewProcedureViewModel> _openSummary(
   WidgetTester tester,
   Modality modality,
-  List<int> teeth,
-) async {
+  List<int> teeth, {
+  ProcedureSubtype? subtype,
+}) async {
   final repository = MockClinicRepository(MockClinicService());
   final patient = repository.current.patients.first;
   final viewModel = NewProcedureViewModel(repository, patientId: patient.id);
-  viewModel.chooseModality(modality);
+  viewModel.chooseModality(modality, subtype: subtype);
   for (final tooth in teeth) {
     viewModel.toggleTooth(tooth);
   }

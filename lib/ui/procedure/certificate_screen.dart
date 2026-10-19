@@ -63,7 +63,7 @@ class CertificateScreen extends StatelessWidget {
                     Text('Responsável legal: ${patient.guardian}'),
                   const SizedBox(height: 12),
                   Text(
-                    '${modalityLabel(procedure.modality)}\n'
+                    '${procedure.classificationLabel}\n'
                     '${formatDay(procedure.surgeryDate)}\n'
                     '${procedure.teethLabel}',
                   ),

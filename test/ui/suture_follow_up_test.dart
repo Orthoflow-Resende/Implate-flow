@@ -90,7 +90,7 @@ MockClinicRepository _repository() {
         Procedure(
           id: 'pro-1',
           patientId: patient.id,
-          modality: Modality.unitario,
+          modality: Modality.implante,
           surgeryDate: DateTime(2026, 9, 1),
           statusLabel: clinicalStatus,
           sites: const [ToothSite(fdi: 11, role: ToothRole.pilar)],

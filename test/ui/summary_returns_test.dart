@@ -15,7 +15,7 @@ void main() {
     final repository = MockClinicRepository(MockClinicService());
     final patient = repository.current.patients.first;
     final viewModel = NewProcedureViewModel(repository, patientId: patient.id);
-    viewModel.chooseModality(Modality.unitario);
+    viewModel.chooseModality(Modality.implante);
     viewModel.toggleTooth(11);
     viewModel.openSummary();
     tester.view.physicalSize = const Size(800, 5000);
@@ -119,7 +119,7 @@ void main() {
     final procedure = Procedure(
       id: 'pro-1',
       patientId: patient.id,
-      modality: Modality.unitario,
+      modality: Modality.implante,
       surgeryDate: DateTime(2026, 9, 1),
       statusLabel: 'Instalado',
       sites: const [ToothSite(fdi: 11, role: ToothRole.pilar)],

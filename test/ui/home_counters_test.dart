@@ -25,7 +25,7 @@ void main() {
           Procedure(
             id: 'pro-ana',
             patientId: ana.id,
-            modality: Modality.unitario,
+            modality: Modality.implante,
             surgeryDate: today.subtract(const Duration(days: 40)),
             statusLabel: 'Instalado',
             sites: const [ToothSite(fdi: 36, role: ToothRole.pilar)],
@@ -49,7 +49,7 @@ void main() {
           Procedure(
             id: 'pro-bruno',
             patientId: bruno.id,
-            modality: Modality.unitario,
+            modality: Modality.implante,
             surgeryDate: today.subtract(const Duration(days: 20)),
             statusLabel: 'Instalado',
             sites: const [ToothSite(fdi: 11, role: ToothRole.pilar)],
@@ -66,7 +66,7 @@ void main() {
           Procedure(
             id: 'pro-clara',
             patientId: clara.id,
-            modality: Modality.ponte,
+            modality: Modality.protese,
             surgeryDate: today,
             statusLabel: 'Instalado',
             sites: const [ToothSite(fdi: 14, role: ToothRole.pilar)],

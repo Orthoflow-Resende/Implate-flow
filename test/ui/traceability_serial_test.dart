@@ -8,7 +8,7 @@ void main() {
     final procedure = Procedure(
       id: 'pro-1',
       patientId: 'pac-1',
-      modality: Modality.unitario,
+      modality: Modality.implante,
       surgeryDate: DateTime(2026, 1, 1),
       statusLabel: implantStatusLabel(ImplantStatus.instalado),
       sites: [

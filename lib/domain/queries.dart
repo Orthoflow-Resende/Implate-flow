@@ -22,7 +22,7 @@ List<Procedure> proceduresOf(List<Procedure> procedures, String patientId) {
 List<ToothSite> implantsOf(List<Procedure> procedures, String patientId) {
   return [
     for (final procedure in proceduresOf(procedures, patientId))
-      if (procedure.modality != Modality.enxerto)
+      if (procedure.modality == Modality.implante)
         for (final site in procedure.pillars) site,
   ];
 }
@@ -327,7 +327,7 @@ List<CalendarMark> marksInMonth(List<Procedure> procedures, List<Patient> patien
           patientId: patient.id,
           patientName: patient.name,
           kind: CalendarKind.cirurgia,
-          label: modalityLabel(procedure.modality),
+          label: procedure.classificationLabel,
           procedureId: procedure.id,
         ),
       );

@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 void main() {
   testWidgets('o resumo não pede número de série', (tester) async {
     for (final modality in Modality.values) {
-      await _openSummary(tester, modality, modality == Modality.unitario ? [11] : [14, 16]);
+      await _openSummary(tester, modality, modality == Modality.implante ? [11] : [14, 16]);
       expect(find.text('Série'), findsNothing);
     }
   });

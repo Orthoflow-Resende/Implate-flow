@@ -15,7 +15,7 @@ void main() {
     return Procedure(
       id: id,
       patientId: patientId,
-      modality: Modality.unitario,
+      modality: Modality.implante,
       surgeryDate: DateTime(2026, 9, 1),
       statusLabel: 'Instalado',
       sites: const [ToothSite(fdi: 36, role: ToothRole.pilar)],

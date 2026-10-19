@@ -80,6 +80,9 @@ Map<String, dynamic> _procedureToJson(Procedure procedure) {
     'id': procedure.id,
     'patientId': procedure.patientId,
     'modality': procedure.modality.name,
+    'subtype': procedure.subtype?.name,
+    'associatedGraft': procedure.associatedGraft,
+    'linkedProcedureIds': procedure.linkedProcedureIds,
     'arch': procedure.arch?.name,
     'surgeryDate': _date(procedure.surgeryDate),
     'statusLabel': procedure.statusLabel,
@@ -133,6 +136,13 @@ Procedure _procedureFromJson(Map<String, dynamic> json) {
     id: json['id'] as String,
     patientId: json['patientId'] as String,
     modality: Modality.values.byName(json['modality'] as String),
+    subtype: json['subtype'] == null
+        ? null
+        : ProcedureSubtype.values.byName(json['subtype'] as String),
+    associatedGraft: json['associatedGraft'] as bool? ?? false,
+    linkedProcedureIds: [
+      for (final id in json['linkedProcedureIds'] as List<dynamic>? ?? const []) id as String,
+    ],
     arch: json['arch'] == null ? null : Arch.values.byName(json['arch'] as String),
     surgeryDate: _parseDate(json['surgeryDate'] as String),
     statusLabel: json['statusLabel'] as String? ?? '',

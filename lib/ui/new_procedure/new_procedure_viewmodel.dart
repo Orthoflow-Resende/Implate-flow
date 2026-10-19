@@ -111,6 +111,9 @@ class NewProcedureViewModel extends ChangeNotifier {
 
   int step = 0;
   Modality? modality;
+  ProcedureSubtype? subtype;
+  bool associatedGraft = false;
+  final Set<String> linkedProcedureIds = {};
   Arch arch = Arch.superior;
   final Set<int> selected = {};
   final Map<int, ToothRole> roles = {};
@@ -126,27 +129,105 @@ class NewProcedureViewModel extends ChangeNotifier {
   List<int> get ordered => selected.toList()..sort(compareTeeth);
 
   List<int> get pillars => ordered.where((tooth) {
-        if (modality != Modality.ponte) return true;
+        if (subtype != ProcedureSubtype.ponte) return true;
         return (roles[tooth] ?? ToothRole.pilar) == ToothRole.pilar;
       }).toList();
 
-  bool get canContinue => switch (modality) {
-        Modality.ponte => selected.isNotEmpty && isContiguousSpan(selected) && pillars.isNotEmpty,
-        Modality.protocolo => selected.length >= 2,
-        null => false,
-        _ => selected.isNotEmpty,
+  bool get isProsthesis => modality == Modality.protese;
+
+  bool get isImplant => modality == Modality.implante;
+
+  bool get schedulesSurgicalReturns => modality != null && !isProsthesis;
+
+  bool get hasDraftProgress =>
+      selected.isNotEmpty || linkedProcedureIds.isNotEmpty || associatedGraft || extraReturns.isNotEmpty;
+
+  String get draftLabel => classificationLabelFor(
+        modality: modality ?? Modality.implante,
+        subtype: subtype,
+        associatedGraft: associatedGraft,
+      );
+
+  List<Procedure> get linkableImplants => repository.current.procedures
+      .where((procedure) => procedure.patientId == patientId && procedure.modality == Modality.implante)
+      .toList();
+
+  bool get canContinue => switch (subtype) {
+        ProcedureSubtype.ponte => selected.isNotEmpty && isContiguousSpan(selected) && pillars.isNotEmpty,
+        ProcedureSubtype.protocolo => selected.length >= 2,
+        ProcedureSubtype.unitario || null => modality != null && selected.isNotEmpty,
       };
 
-  Arch? get disabledArch => modality == Modality.protocolo
+  Arch? get disabledArch => subtype == ProcedureSubtype.protocolo
       ? (arch == Arch.superior ? Arch.inferior : Arch.superior)
       : null;
 
-  void chooseModality(Modality value) {
+  String? get saveError {
+    if (isProsthesis && linkedProcedureIds.isEmpty) {
+      return 'Vincule ao menos um implante já registrado.';
+    }
+    return null;
+  }
+
+  bool get associatedGraftHasData => drafts.values.any(
+        (draft) => draft.grafts.any(
+          (graft) =>
+              graft.manufacturer.isNotEmpty ||
+              graft.model.isNotEmpty ||
+              graft.size.isNotEmpty ||
+              graft.donorSite.isNotEmpty ||
+              graft.lot.isNotEmpty,
+        ),
+      );
+
+  void chooseModality(Modality value, {ProcedureSubtype? subtype}) {
     modality = value;
-    selected.clear();
-    roles.clear();
+    this.subtype = value == Modality.enxerto ? null : subtype ?? ProcedureSubtype.unitario;
+    _clearClinicalDraft();
     step = 1;
     notifyListeners();
+  }
+
+  void selectMain(Modality value) {
+    if (modality != value) _clearClinicalDraft();
+    modality = value;
+    subtype = null;
+    step = value == Modality.enxerto ? 1 : 0;
+    notifyListeners();
+  }
+
+  void selectSubtype(ProcedureSubtype value) {
+    if (subtype != value) _clearClinicalDraft();
+    subtype = value;
+    step = 1;
+    notifyListeners();
+  }
+
+  void setAssociatedGraft(bool value, {bool discard = false}) {
+    if (!value && associatedGraftHasData && !discard) return;
+    associatedGraft = value;
+    for (final draft in drafts.values) {
+      draft.withGraft = value;
+      if (!value) draft.grafts = [GraftDraft()];
+    }
+    if (schedulesSurgicalReturns) {
+      longReturn = addCalendarMonths(surgery, longMonths);
+    }
+    notifyListeners();
+  }
+
+  void toggleLinkedProcedure(String id) {
+    if (!linkedProcedureIds.add(id)) linkedProcedureIds.remove(id);
+    notifyListeners();
+  }
+
+  void _clearClinicalDraft() {
+    selected.clear();
+    roles.clear();
+    drafts.clear();
+    linkedProcedureIds.clear();
+    associatedGraft = false;
+    extraReturns.clear();
   }
 
   void chooseArch(Arch value) {
@@ -177,13 +258,13 @@ class NewProcedureViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     }
-    if (current == Modality.ponte) {
+    if (subtype == ProcedureSubtype.ponte) {
       final next = {...selected, tooth};
       if (!isContiguousSpan(next)) {
         return 'A ponte precisa de um trecho contínuo da mesma arcada.';
       }
     }
-    if (current == Modality.protocolo && sideOf(tooth) != arch) return null;
+    if (subtype == ProcedureSubtype.protocolo && sideOf(tooth) != arch) return null;
     selected.add(tooth);
     _syncRoles();
     notifyListeners();
@@ -207,16 +288,15 @@ class NewProcedureViewModel extends ChangeNotifier {
   }
 
   int get longMonths {
-    if (modality == Modality.enxerto) return 6;
-    final grafted = pillars.any((tooth) => drafts[tooth]?.withGraft ?? false);
-    return grafted ? 6 : 3;
+    if (modality == Modality.enxerto || associatedGraft) return 6;
+    return 3;
   }
 
   ReturnReason get longReason => switch (modality!) {
         Modality.enxerto => ReturnReason.instalarImplante,
-        Modality.ponte => ReturnReason.instalarPonte,
-        Modality.protocolo => ReturnReason.instalarProtocolo,
-        Modality.unitario => ReturnReason.osseointegracao,
+        Modality.implante when subtype == ProcedureSubtype.protocolo => ReturnReason.instalarProtocolo,
+        Modality.implante => ReturnReason.osseointegracao,
+        Modality.protese => ReturnReason.controle,
       };
 
   void setSurgery(DateTime value) {
@@ -358,7 +438,7 @@ class NewProcedureViewModel extends ChangeNotifier {
 
   List<Procedure> save() {
     final current = modality!;
-    final grouped = current == Modality.ponte || current == Modality.protocolo;
+    final grouped = subtype == ProcedureSubtype.ponte || subtype == ProcedureSubtype.protocolo;
     final groups = grouped ? [ordered] : pillars.map((tooth) => [tooth]).toList();
     final created = <Procedure>[];
     for (final teeth in groups) {
@@ -367,17 +447,22 @@ class NewProcedureViewModel extends ChangeNotifier {
           id: repository.allocateId('pro'),
           patientId: patientId,
           modality: current,
-          arch: current == Modality.protocolo ? arch : null,
+          subtype: subtype,
+          associatedGraft: isImplant && associatedGraft,
+          linkedProcedureIds: isProsthesis ? linkedProcedureIds.toList() : const [],
+          arch: subtype == ProcedureSubtype.protocolo ? arch : null,
           surgeryDate: surgery,
-          statusLabel: current == Modality.enxerto
-              ? graftStatusLabel(GraftStatus.realizado)
-              : implantStatusLabel(ImplantStatus.instalado),
+          statusLabel: switch (current) {
+            Modality.enxerto => graftStatusLabel(GraftStatus.realizado),
+            Modality.protese => implantStatusLabel(ImplantStatus.protese),
+            Modality.implante => implantStatusLabel(ImplantStatus.instalado),
+          },
           sites: [
             for (final tooth in teeth)
               ToothSite(
                 fdi: tooth,
                 role: roles[tooth] ?? ToothRole.pilar,
-                piece: current == Modality.enxerto || roles[tooth] == ToothRole.pontico
+                piece: current != Modality.implante || roles[tooth] == ToothRole.pontico
                     ? null
                     : ImplantPiece(
                         manufacturer: drafts[tooth]?.manufacturer ?? '',
@@ -392,13 +477,14 @@ class NewProcedureViewModel extends ChangeNotifier {
               ),
           ],
           followUps: chronologicalFollowUps([
-            FollowUp(
-              id: repository.allocateId('ret'),
-              date: suture,
-              reason: ReturnReason.sutura,
-              status: ReturnStatus.agendado,
-              reminderEnabled: false,
-            ),
+            if (schedulesSurgicalReturns)
+              FollowUp(
+                id: repository.allocateId('ret'),
+                date: suture,
+                reason: ReturnReason.sutura,
+                status: ReturnStatus.agendado,
+                reminderEnabled: false,
+              ),
             for (final extra in extraReturns)
               FollowUp(
                 id: repository.allocateId('ret'),
@@ -408,14 +494,15 @@ class NewProcedureViewModel extends ChangeNotifier {
                 reminderEnabled: extra.reminderEnabled,
                 reminderDaysBefore: extra.reminderDaysBefore,
               ),
-            FollowUp(
-              id: repository.allocateId('ret'),
-              date: longReturn,
-              reason: longReason,
-              status: ReturnStatus.agendado,
-              reminderEnabled: longReminder,
-              reminderDaysBefore: longLead,
-            ),
+            if (schedulesSurgicalReturns)
+              FollowUp(
+                id: repository.allocateId('ret'),
+                date: longReturn,
+                reason: longReason,
+                status: ReturnStatus.agendado,
+                reminderEnabled: longReminder,
+                reminderDaysBefore: longLead,
+              ),
           ]),
         ),
       );
@@ -427,13 +514,13 @@ class NewProcedureViewModel extends ChangeNotifier {
   List<GraftMaterial> _graftsFor(int tooth) {
     final draft = drafts[tooth];
     if (draft == null) return const [];
-    final include = modality == Modality.enxerto || draft.withGraft;
+    final include = modality == Modality.enxerto || (isImplant && associatedGraft && draft.withGraft);
     if (!include || roles[tooth] == ToothRole.pontico) return const [];
     return [for (final graft in draft.grafts) graft.toMaterial()];
   }
 
   void _syncRoles() {
-    if (modality != Modality.ponte) {
+    if (subtype != ProcedureSubtype.ponte) {
       for (final tooth in selected) {
         roles[tooth] = ToothRole.pilar;
       }

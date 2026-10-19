@@ -1,4 +1,6 @@
-enum Modality { unitario, ponte, protocolo, enxerto }
+enum Modality { implante, enxerto, protese }
+
+enum ProcedureSubtype { unitario, protocolo, ponte }
 
 enum ToothRole { pilar, pontico }
 
@@ -126,11 +128,42 @@ bool isContiguousSpan(Iterable<int> teeth) {
 }
 
 String modalityLabel(Modality modality) => switch (modality) {
-      Modality.unitario => 'Implante unitário',
-      Modality.ponte => 'Ponte fixa',
-      Modality.protocolo => 'Protocolo',
-      Modality.enxerto => 'Enxerto sozinho',
+      Modality.implante => 'Implante',
+      Modality.enxerto => 'Cirurgia de Enxerto',
+      Modality.protese => 'Prótese sobre implante',
     };
+
+List<ProcedureSubtype> subtypesOf(Modality modality) => switch (modality) {
+      Modality.implante => const [ProcedureSubtype.unitario, ProcedureSubtype.protocolo],
+      Modality.protese => const [
+          ProcedureSubtype.unitario,
+          ProcedureSubtype.ponte,
+          ProcedureSubtype.protocolo,
+        ],
+      Modality.enxerto => const [],
+    };
+
+String subtypeLabel(Modality modality, ProcedureSubtype subtype) => switch ((modality, subtype)) {
+      (Modality.implante, ProcedureSubtype.unitario) => 'Unitário',
+      (Modality.implante, ProcedureSubtype.protocolo) => 'Protocolo',
+      (Modality.protese, ProcedureSubtype.unitario) => 'Unitária',
+      (Modality.protese, ProcedureSubtype.ponte) => 'Ponte fixa',
+      (Modality.protese, ProcedureSubtype.protocolo) => 'Protocolo',
+      _ => '',
+    };
+
+String classificationLabelFor({
+  required Modality modality,
+  ProcedureSubtype? subtype,
+  bool associatedGraft = false,
+}) {
+  final sub = subtype;
+  final base = sub == null
+      ? modalityLabel(modality)
+      : '${modalityLabel(modality)} · ${subtypeLabel(modality, sub)}';
+  if (associatedGraft) return '$base · com enxerto';
+  return base;
+}
 
 String archLabel(Arch arch) =>
     arch == Arch.superior ? 'Arcada superior' : 'Arcada inferior';
@@ -432,6 +465,9 @@ class Procedure {
     required this.surgeryDate,
     required this.sites,
     required this.statusLabel,
+    this.subtype,
+    this.associatedGraft = false,
+    List<String>? linkedProcedureIds,
     this.arch,
     this.notes = '',
     List<Visit>? visits,
@@ -441,11 +477,15 @@ class Procedure {
     this.certificatePdfPath,
   })  : visits = visits ?? [],
         followUps = followUps ?? [],
-        photos = photos ?? [];
+        photos = photos ?? [],
+        linkedProcedureIds = linkedProcedureIds ?? const [];
 
   final String id;
   final String patientId;
   final Modality modality;
+  final ProcedureSubtype? subtype;
+  final bool associatedGraft;
+  final List<String> linkedProcedureIds;
   final Arch? arch;
   final DateTime surgeryDate;
   final String statusLabel;
@@ -471,6 +511,9 @@ class Procedure {
       id: id,
       patientId: patientId,
       modality: modality,
+      subtype: subtype,
+      associatedGraft: associatedGraft,
+      linkedProcedureIds: linkedProcedureIds,
       surgeryDate: surgeryDate,
       sites: sites ?? this.sites,
       statusLabel: statusLabel ?? this.statusLabel,
@@ -492,11 +535,19 @@ class Procedure {
 
   String get teethLabel {
     final numbers = sites.map((site) => site.fdi).toList()..sort(compareTeeth);
-    if (modality == Modality.protocolo && arch != null) {
+    if (subtype == ProcedureSubtype.protocolo && arch != null) {
       return '${archLabel(arch!)} · ${numbers.join(', ')}';
     }
     return numbers.join(', ');
   }
+
+  bool get isProtocol => subtype == ProcedureSubtype.protocolo;
+
+  String get classificationLabel => classificationLabelFor(
+        modality: modality,
+        subtype: subtype,
+        associatedGraft: associatedGraft,
+      );
 }
 
 class CalendarMark {

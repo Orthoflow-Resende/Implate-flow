@@ -38,7 +38,8 @@ void main() {
     {
       "id": "pro-1",
       "patientId": "pac-1",
-      "modality": "unitario",
+      "modality": "implante",
+      "subtype": "unitario",
       "surgeryDate": "2026-10-01T00:00:00.000",
       "statusLabel": "Instalado",
       "sites": [],
@@ -65,7 +66,7 @@ void main() {
     final repository = MockClinicRepository(MockClinicService());
     final patient = repository.current.patients.first;
     final viewModel = NewProcedureViewModel(repository, patientId: patient.id);
-    viewModel.chooseModality(Modality.unitario);
+    viewModel.chooseModality(Modality.implante);
     viewModel.toggleTooth(11);
     viewModel.openSummary();
     tester.view.physicalSize = const Size(800, 5000);

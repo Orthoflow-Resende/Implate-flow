@@ -32,7 +32,7 @@ class _TraceabilityEditorPageState extends State<TraceabilityEditorPage> {
       if (site.role == ToothRole.pilar) site.fdi: PieceDraft.fromSite(site),
   };
 
-  bool get _showImplant => widget.procedure.modality != Modality.enxerto;
+  bool get _showImplant => widget.procedure.modality == Modality.implante;
 
   void _save() {
     Navigator.pop(context, [
@@ -81,7 +81,7 @@ class _TraceabilityEditorPageState extends State<TraceabilityEditorPage> {
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
               children: [
                 AppSectionHeader(
-                  title: modalityLabel(widget.procedure.modality),
+                  title: widget.procedure.classificationLabel,
                   subtitle: 'Pode completar a peça agora ou deixar em branco.',
                 ),
                 if (pontics.isNotEmpty) ...[

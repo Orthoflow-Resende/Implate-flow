@@ -33,27 +33,83 @@ class _ModalityStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final selected = viewModel.modality;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
         const AppSectionHeader(
           title: 'Modalidade',
-          subtitle: 'A regra de toque na boca muda conforme a escolha.',
+          subtitle: 'Escolha a modalidade principal e, quando houver, o subtipo.',
         ),
         const SizedBox(height: 12),
         for (final modality in Modality.values) ...[
           AppSurfaceCard(
             child: ListTile(
               title: Text(modalityLabel(modality)),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => viewModel.chooseModality(modality),
+              trailing: Icon(selected == modality ? Icons.expand_less : Icons.chevron_right),
+              selected: selected == modality,
+              onTap: () => _selectMain(context, modality),
             ),
           ),
+          if (selected == modality && subtypesOf(modality).isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final subtype in subtypesOf(modality))
+                    ChoiceChip(
+                      label: Text(subtypeLabel(modality, subtype)),
+                      selected: viewModel.subtype == subtype,
+                      onSelected: (_) => _selectSubtype(context, subtype),
+                    ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
         ],
       ],
     );
   }
+
+  Future<void> _selectMain(BuildContext context, Modality modality) async {
+    if (viewModel.modality == modality && modality != Modality.enxerto) return;
+    if (viewModel.hasDraftProgress && viewModel.modality != modality) {
+      final discard = await _confirmDiscard(context);
+      if (!discard || !context.mounted) return;
+    }
+    viewModel.selectMain(modality);
+  }
+
+  Future<void> _selectSubtype(BuildContext context, ProcedureSubtype subtype) async {
+    if (viewModel.subtype == subtype) {
+      viewModel.selectSubtype(subtype);
+      return;
+    }
+    if (viewModel.hasDraftProgress && viewModel.subtype != subtype) {
+      final discard = await _confirmDiscard(context);
+      if (!discard || !context.mounted) return;
+    }
+    viewModel.selectSubtype(subtype);
+  }
+}
+
+Future<bool> _confirmDiscard(BuildContext context) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Trocar a seleção'),
+      content: const Text('Dentes e dados já preenchidos serão descartados.'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Trocar')),
+      ],
+    ),
+  );
+  return ok == true;
 }
 
 class _MouthStep extends StatelessWidget {
@@ -63,7 +119,6 @@ class _MouthStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final modality = viewModel.modality!;
     return Column(
       children: [
         Expanded(
@@ -71,10 +126,10 @@ class _MouthStep extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
               AppSectionHeader(
-                title: modalityLabel(modality),
+                title: viewModel.draftLabel,
                 subtitle: 'Toque o dente para selecionar.',
               ),
-              if (modality == Modality.protocolo) ...[
+              if (viewModel.subtype == ProcedureSubtype.protocolo) ...[
                 const SizedBox(height: 12),
                 SegmentedButton<Arch>(
                   segments: const [
@@ -107,11 +162,11 @@ class _MouthStep extends StatelessWidget {
                   for (final tooth in viewModel.ordered)
                     InputChip(
                       label: Text(
-                        modality == Modality.ponte
+                        viewModel.subtype == ProcedureSubtype.ponte
                             ? '$tooth · ${roleLabel(viewModel.roles[tooth] ?? ToothRole.pilar)}'
                             : '$tooth',
                       ),
-                      onPressed: modality == Modality.ponte ? () => viewModel.flipRole(tooth) : null,
+                      onPressed: viewModel.subtype == ProcedureSubtype.ponte ? () => viewModel.flipRole(tooth) : null,
                       onDeleted: () => viewModel.toggleTooth(tooth),
                     ),
                 ],
@@ -139,7 +194,6 @@ class _SummaryStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final modality = viewModel.modality!;
     final pontics = viewModel.ordered
         .where((tooth) => viewModel.roles[tooth] == ToothRole.pontico)
         .toList();
@@ -150,15 +204,48 @@ class _SummaryStep extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
               _OverviewCard(viewModel: viewModel),
-              if (modality == Modality.ponte && pontics.isNotEmpty) ...[
+              if (viewModel.subtype == ProcedureSubtype.ponte && pontics.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 _PonticCard(teeth: pontics),
               ],
               const SizedBox(height: 20),
+              if (viewModel.isImplant) ...[
+                const AppSectionHeader(title: 'Foi realizado enxerto?'),
+                const SizedBox(height: 8),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('Não')),
+                    ButtonSegment(value: true, label: Text('Sim')),
+                  ],
+                  selected: {viewModel.associatedGraft},
+                  onSelectionChanged: (value) => _setAssociatedGraft(context, value.first),
+                ),
+                const SizedBox(height: 20),
+              ],
+              if (viewModel.isProsthesis) ...[
+                const AppSectionHeader(
+                  title: 'Implantes vinculados',
+                  subtitle: 'A prótese usa implantes já registrados, sem nova instalação.',
+                ),
+                const SizedBox(height: 8),
+                if (viewModel.linkableImplants.isEmpty)
+                  const AppEmptyHint('Nenhum implante deste paciente.')
+                else
+                  for (final procedure in viewModel.linkableImplants) ...[
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(procedure.classificationLabel),
+                      subtitle: Text(procedure.teethLabel),
+                      value: viewModel.linkedProcedureIds.contains(procedure.id),
+                      onChanged: (_) => viewModel.toggleLinkedProcedure(procedure.id),
+                    ),
+                  ],
+                const SizedBox(height: 12),
+              ],
               AppSectionHeader(
                 title: 'Rastreio',
                 subtitle: 'Pode ficar em branco e ser completado depois.',
-                action: viewModel.pillars.length > 1 && modality != Modality.enxerto
+                action: viewModel.pillars.length > 1 && viewModel.isImplant
                     ? TextButton(
                         onPressed: viewModel.copyFromFirst,
                         child: const Text('Repetir o primeiro'),
@@ -177,7 +264,9 @@ class _SummaryStep extends StatelessWidget {
               const SizedBox(height: 8),
               AppSectionHeader(
                 title: 'Retornos',
-                subtitle: 'Sutura em 7 dias · longo em ${viewModel.longMonths} meses.',
+                subtitle: viewModel.schedulesSurgicalReturns
+                    ? 'Sutura em 7 dias · longo em ${viewModel.longMonths} meses.'
+                    : 'Defina os retornos deste atendimento. Sutura e osseointegração não são criadas automaticamente.',
               ),
               const SizedBox(height: 8),
               ..._chronologicalReturnEditors(viewModel),
@@ -187,12 +276,14 @@ class _SummaryStep extends StatelessWidget {
                 icon: const Icon(Icons.add),
                 label: const Text('Retorno de controle'),
               ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () => viewModel.addExtraReturn(ReturnReason.reabertura),
-                icon: const Icon(Icons.add),
-                label: const Text('Retorno para reabertura'),
-              ),
+              if (viewModel.schedulesSurgicalReturns) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => viewModel.addExtraReturn(ReturnReason.reabertura),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Retorno para reabertura'),
+                ),
+              ],
             ],
           ),
         ),
@@ -201,6 +292,11 @@ class _SummaryStep extends StatelessWidget {
           primaryLabel: 'Salvar',
           onSecondary: viewModel.backToMouth,
           onPrimary: () {
+            final error = viewModel.saveError;
+            if (error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+              return;
+            }
             final created = viewModel.save();
             context.pop();
             if (created.length == 1) context.push('/procedures/${created.first.id}');
@@ -229,13 +325,13 @@ class _OverviewCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              modalityLabel(viewModel.modality!),
+              viewModel.draftLabel,
               style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             _DateTile(
               icon: Icons.event_outlined,
-              label: 'Cirurgia',
+              label: viewModel.isProsthesis ? 'Instalação' : 'Cirurgia',
               value: formatDay(viewModel.surgery),
               onTap: () => _pickDate(context, viewModel.surgery, viewModel.setSurgery),
             ),
@@ -285,12 +381,12 @@ class _ToothCard extends StatelessWidget {
       draft.model,
     ].where((part) => part.isNotEmpty).join(' ');
     return AppCollapseCard(
-      title: modality == Modality.protocolo ? 'Região $tooth' : 'Dente $tooth',
+      title: viewModel.subtype == ProcedureSubtype.protocolo ? 'Região $tooth' : 'Dente $tooth',
       subtitle: pieceLine.isEmpty ? 'Rastreio opcional' : pieceLine,
       initiallyExpanded: expanded,
       child: Column(
         children: [
-          if (modality != Modality.enxerto) ...[
+          if (viewModel.isImplant) ...[
             _ManufacturerField(viewModel: viewModel, tooth: tooth),
             const SizedBox(height: 12),
             _ModelField(viewModel: viewModel, tooth: tooth),
@@ -322,14 +418,8 @@ class _ToothCard extends StatelessWidget {
                 (value) => viewModel.updateDraft(tooth, (item) => item.expiresOn = value),
               ),
             ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Com enxerto'),
-              value: draft.withGraft,
-              onChanged: (value) => viewModel.updateDraft(tooth, (item) => item.withGraft = value),
-            ),
           ],
-          if (modality == Modality.enxerto || draft.withGraft)
+          if (modality == Modality.enxerto || (viewModel.isImplant && viewModel.associatedGraft))
             _GraftFields(viewModel: viewModel, tooth: tooth),
         ],
       ),
@@ -530,22 +620,44 @@ class _GraftFields extends StatelessWidget {
   }
 }
 
+Future<void> _setAssociatedGraft(BuildContext context, bool value) async {
+  final viewModel = context.read<NewProcedureViewModel>();
+  if (!value && viewModel.associatedGraftHasData) {
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remover o enxerto'),
+        content: const Text('Os dados do enxerto associado serão descartados.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Remover')),
+        ],
+      ),
+    );
+    if (discard == true) viewModel.setAssociatedGraft(false, discard: true);
+    return;
+  }
+  viewModel.setAssociatedGraft(value);
+}
+
 List<Widget> _chronologicalReturnEditors(NewProcedureViewModel viewModel) {
   final editors = <Widget>[
-    _ReturnEditor(
-      title: 'Sutura',
-      date: viewModel.suture,
-      onDate: viewModel.setSuture,
-    ),
-    _ReturnEditor(
-      title: 'Retorno longo',
-      date: viewModel.longReturn,
-      enabled: viewModel.longReminder,
-      daysBefore: viewModel.longLead,
-      onDate: viewModel.setLongReturn,
-      onEnabled: viewModel.setLongReminder,
-      onDaysBefore: viewModel.setLongLead,
-    ),
+    if (viewModel.schedulesSurgicalReturns) ...[
+      _ReturnEditor(
+        title: 'Sutura',
+        date: viewModel.suture,
+        onDate: viewModel.setSuture,
+      ),
+      _ReturnEditor(
+        title: 'Retorno longo',
+        date: viewModel.longReturn,
+        enabled: viewModel.longReminder,
+        daysBefore: viewModel.longLead,
+        onDate: viewModel.setLongReturn,
+        onEnabled: viewModel.setLongReminder,
+        onDaysBefore: viewModel.setLongLead,
+      ),
+    ],
     for (final extra in viewModel.extraReturns)
       _ReturnEditor(
         key: ValueKey(extra.id),

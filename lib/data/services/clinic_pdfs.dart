@@ -26,7 +26,7 @@ Future<Uint8List> buildCertificatePdf({
         if (patient.isMinor && patient.guardian.isNotEmpty)
           pw.Text('Responsável legal: ${patient.guardian}'),
         pw.SizedBox(height: 12),
-        pw.Text(modalityLabel(procedure.modality)),
+        pw.Text(procedure.classificationLabel),
         pw.Text(formatDay(procedure.surgeryDate)),
         pw.Text(procedure.teethLabel),
         for (final site in procedure.pillars) ...[
@@ -93,7 +93,7 @@ Future<Uint8List> buildPatientChartPdf({
         for (final procedure in history) ...[
           pw.SizedBox(height: 8),
           pw.Text(
-            '${formatDay(procedure.surgeryDate)} · ${modalityLabel(procedure.modality)} · ${procedure.teethLabel}',
+            '${formatDay(procedure.surgeryDate)} · ${procedure.classificationLabel} · ${procedure.teethLabel}',
             style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
           ),
           pw.Text(procedure.statusLabel),

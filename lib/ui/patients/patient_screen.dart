@@ -19,7 +19,7 @@ class PatientScreen extends StatelessWidget {
     final timeline = viewModel.timeline;
     final implants = [
       for (final procedure in history)
-        if (procedure.modality != Modality.enxerto)
+        if (procedure.modality == Modality.implante)
           for (final site in procedure.pillars) (procedure: procedure, site: site),
     ];
     return Scaffold(
@@ -79,7 +79,7 @@ class PatientScreen extends StatelessWidget {
                 child: ListTile(
                   title: Text('Dente ${item.site.fdi}'),
                   subtitle: Text(
-                    '${modalityLabel(item.procedure.modality)} · ${item.site.piece?.manufacturer ?? 'Sem fabricante'} ${item.site.piece?.model ?? ''}\n${item.procedure.statusLabel}',
+                    '${item.procedure.classificationLabel} · ${item.site.piece?.manufacturer ?? 'Sem fabricante'} ${item.site.piece?.model ?? ''}\n${item.procedure.statusLabel}',
                   ),
                   isThreeLine: true,
                   trailing: const Icon(Icons.chevron_right),

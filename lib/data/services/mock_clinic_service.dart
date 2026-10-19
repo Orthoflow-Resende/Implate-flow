@@ -51,7 +51,8 @@ ClinicSnapshot buildDemoSnapshot() {
       Procedure(
         id: nextId('pro'),
         patientId: maria.id,
-        modality: Modality.unitario,
+        modality: Modality.implante,
+        subtype: ProcedureSubtype.unitario,
         surgeryDate: shift(-40),
         statusLabel: implantStatusLabel(ImplantStatus.osseointegracao),
         sites: [
@@ -101,11 +102,13 @@ ClinicSnapshot buildDemoSnapshot() {
       ),
     );
 
+    final joaoImplantId = nextId('pro');
     procedures.add(
       Procedure(
-        id: nextId('pro'),
+        id: joaoImplantId,
         patientId: joao.id,
-        modality: Modality.ponte,
+        modality: Modality.implante,
+        subtype: ProcedureSubtype.unitario,
         surgeryDate: shift(-12),
         statusLabel: implantStatusLabel(ImplantStatus.instalado),
         sites: [
@@ -121,7 +124,6 @@ ClinicSnapshot buildDemoSnapshot() {
               expiresOn: DateTime(2030, 2, 1),
             ),
           ),
-          ToothSite(fdi: 15, role: ToothRole.pontico),
           ToothSite(
             fdi: 16,
             role: ToothRole.pilar,
@@ -147,10 +149,36 @@ ClinicSnapshot buildDemoSnapshot() {
           FollowUp(
             id: nextId('ret'),
             date: shift(78),
-            reason: ReturnReason.instalarPonte,
+            reason: ReturnReason.osseointegracao,
             status: ReturnStatus.agendado,
             reminderEnabled: true,
             reminderDaysBefore: 30,
+          ),
+        ],
+      ),
+    );
+    procedures.add(
+      Procedure(
+        id: nextId('pro'),
+        patientId: joao.id,
+        modality: Modality.protese,
+        subtype: ProcedureSubtype.ponte,
+        linkedProcedureIds: [joaoImplantId],
+        surgeryDate: shift(78),
+        statusLabel: implantStatusLabel(ImplantStatus.protese),
+        sites: const [
+          ToothSite(fdi: 14, role: ToothRole.pilar),
+          ToothSite(fdi: 15, role: ToothRole.pontico),
+          ToothSite(fdi: 16, role: ToothRole.pilar),
+        ],
+        followUps: [
+          FollowUp(
+            id: nextId('ret'),
+            date: shift(90),
+            reason: ReturnReason.controle,
+            status: ReturnStatus.agendado,
+            reminderEnabled: true,
+            reminderDaysBefore: defaultReminderDaysBefore,
           ),
         ],
       ),
@@ -160,7 +188,9 @@ ClinicSnapshot buildDemoSnapshot() {
       Procedure(
         id: nextId('pro'),
         patientId: ana.id,
-        modality: Modality.protocolo,
+        modality: Modality.implante,
+        subtype: ProcedureSubtype.protocolo,
+        associatedGraft: true,
         arch: Arch.superior,
         surgeryDate: shift(-2),
         statusLabel: implantStatusLabel(ImplantStatus.instalado),

@@ -12,7 +12,7 @@ List<String> missingCertificateFields({
     missing.add('Responsável legal');
   }
   for (final site in procedure.pillars) {
-    if (procedure.modality != Modality.enxerto) {
+    if (procedure.modality == Modality.implante) {
       final piece = site.piece;
       if (piece == null || !piece.certificateReady) {
         missing.add('Peça do dente ${site.fdi}');

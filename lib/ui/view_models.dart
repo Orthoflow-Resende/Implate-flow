@@ -182,7 +182,7 @@ class PatientViewModel extends RepositoryViewModel {
         (
           date: procedure.surgeryDate,
           title: 'Cirurgia',
-          detail: '${modalityLabel(procedure.modality)} · ${procedure.teethLabel}',
+          detail: '${procedure.classificationLabel} · ${procedure.teethLabel}',
           procedureId: procedure.id,
         ),
         for (final visit in procedure.visits)

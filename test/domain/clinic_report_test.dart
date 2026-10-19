@@ -11,7 +11,7 @@ void main() {
     required String id,
     required String patientId,
     required List<FollowUp> followUps,
-    Modality modality = Modality.unitario,
+    Modality modality = Modality.implante,
   }) {
     return Procedure(
       id: id,
@@ -116,7 +116,7 @@ void main() {
       procedure(
         id: 'pro-bruno',
         patientId: bruno.id,
-        modality: Modality.ponte,
+        modality: Modality.protese,
         followUps: [
           followUp(id: 'ponte', date: DateTime(2026, 10, 20), status: ReturnStatus.agendado),
         ],
@@ -134,7 +134,7 @@ void main() {
         [ana, bruno],
         ReportFilter.proximos,
         today,
-        modality: Modality.ponte,
+        modality: Modality.protese,
       ).single.id,
       bruno.id,
     );

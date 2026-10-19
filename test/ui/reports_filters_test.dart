@@ -23,7 +23,7 @@ void main() {
           Procedure(
             id: 'pro-ana',
             patientId: ana.id,
-            modality: Modality.unitario,
+            modality: Modality.implante,
             surgeryDate: DateTime(2026, 9, 1),
             statusLabel: 'Instalado',
             sites: const [ToothSite(fdi: 11, role: ToothRole.pilar)],
@@ -40,7 +40,7 @@ void main() {
           Procedure(
             id: 'pro-bruno',
             patientId: bruno.id,
-            modality: Modality.ponte,
+            modality: Modality.protese,
             surgeryDate: DateTime(2026, 9, 1),
             statusLabel: 'Instalado',
             sites: const [ToothSite(fdi: 21, role: ToothRole.pilar)],
@@ -92,8 +92,8 @@ void main() {
 
     await tester.tap(find.byTooltip('Filtros'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Ponte fixa'));
-    await tester.tap(find.text('Ponte fixa'));
+    await tester.ensureVisible(find.text('Prótese sobre implante'));
+    await tester.tap(find.text('Prótese sobre implante'));
     await tester.pumpAndSettle();
     expect(find.text('Nenhum retorno próximo.'), findsOneWidget);
     expect(find.descendant(of: find.byTooltip('Filtros'), matching: find.text('2')), findsOneWidget);

@@ -20,7 +20,7 @@ class ProcedureScreen extends StatelessWidget {
     final procedure = viewModel.procedure;
     final patient = viewModel.patient;
     final events = <({DateTime date, String title, String detail})>[
-      (date: procedure.surgeryDate, title: 'Cirurgia', detail: modalityLabel(procedure.modality)),
+      (date: procedure.surgeryDate, title: 'Cirurgia', detail: procedure.classificationLabel),
       for (final visit in procedure.visits) (date: visit.date, title: 'Consulta', detail: visit.note),
       for (final followUp in procedure.followUps)
         (
@@ -31,7 +31,7 @@ class ProcedureScreen extends StatelessWidget {
     ]..sort((a, b) => b.date.compareTo(a.date));
 
     return Scaffold(
-      appBar: AppBar(title: Text(modalityLabel(procedure.modality))),
+      appBar: AppBar(title: Text(procedure.classificationLabel)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
