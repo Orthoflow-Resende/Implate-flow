@@ -78,7 +78,7 @@ void main() {
     expect(find.text('Bruno Dias'), findsNothing);
     expect(find.textContaining('Agendado'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Faltas'));
+    await tester.tap(find.byKey(const ValueKey('report-count-faltas')));
     await tester.pumpAndSettle();
     expect(find.text('Bruno Dias'), findsOneWidget);
     expect(find.text('1 falta'), findsOneWidget);

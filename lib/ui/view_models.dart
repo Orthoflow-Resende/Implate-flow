@@ -211,6 +211,8 @@ class PatientViewModel extends RepositoryViewModel {
 class ReportsViewModel extends RepositoryViewModel {
   ReportsViewModel(super.repository, {this.filter = ReportFilter.atrasados});
 
+  static const pageSize = 20;
+
   ReportFilter filter;
   ReportSpan span = ReportSpan.todos;
   DateTime? customStart;
@@ -218,6 +220,7 @@ class ReportsViewModel extends RepositoryViewModel {
   Modality? modality;
   String query = '';
   bool byAppointment = false;
+  int visibleLimit = pageSize;
 
   DateTime get today => brasiliaToday();
 
@@ -263,16 +266,53 @@ class ReportsViewModel extends RepositoryViewModel {
       );
 
   List<({Patient patient, Procedure procedure, FollowUp followUp})> get appointments {
-    return [
+    final rows = [
       for (final patient in patients)
         for (final row in rowsFor(patient.id))
           (patient: patient, procedure: row.procedure, followUp: row.followUp),
-    ];
+    ]..sort((a, b) {
+        final byDate = a.followUp.date.compareTo(b.followUp.date);
+        if (byDate != 0) return byDate;
+        return a.patient.name.toLowerCase().compareTo(b.patient.name.toLowerCase());
+      });
+    return rows;
+  }
+
+  List<Patient> get visiblePatients => patients.take(visibleLimit).toList();
+
+  List<({Patient patient, Procedure procedure, FollowUp followUp})> get visibleAppointments =>
+      appointments.take(visibleLimit).toList();
+
+  bool get hasMore =>
+      (byAppointment ? appointments.length : patients.length) > visibleLimit;
+
+  int get activeFilterCount {
+    var count = span == ReportSpan.todos ? 0 : 1;
+    if (modality != null) count++;
+    return count;
+  }
+
+  void showMore() {
+    visibleLimit += pageSize;
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    span = ReportSpan.todos;
+    customStart = null;
+    customEnd = null;
+    modality = null;
+    _publish();
+  }
+
+  void _publish() {
+    visibleLimit = pageSize;
+    notifyListeners();
   }
 
   void setFilter(ReportFilter value) {
     filter = value;
-    notifyListeners();
+    _publish();
   }
 
   void setSpan(ReportSpan value) {
@@ -286,7 +326,7 @@ class ReportsViewModel extends RepositoryViewModel {
         customEnd = start;
       }
     }
-    notifyListeners();
+    _publish();
   }
 
   void setCustomStart(DateTime value) {
@@ -302,17 +342,17 @@ class ReportsViewModel extends RepositoryViewModel {
 
   void setModality(Modality? value) {
     modality = value;
-    notifyListeners();
+    _publish();
   }
 
   void setQuery(String value) {
     query = value;
-    notifyListeners();
+    _publish();
   }
 
   void setByAppointment(bool value) {
     byAppointment = value;
-    notifyListeners();
+    _publish();
   }
 }
 

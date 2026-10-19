@@ -92,14 +92,6 @@ class ReportWindow {
   }
 }
 
-String reportFilterLabel(ReportFilter filter) => switch (filter) {
-      ReportFilter.emDia => 'Em dia',
-      ReportFilter.atrasados => 'Pacientes em atraso',
-      ReportFilter.faltas => 'Faltas',
-      ReportFilter.proximos => 'Próximos retornos',
-      ReportFilter.realizados => 'Realizados',
-    };
-
 String reportSpanLabel(ReportSpan span) => switch (span) {
       ReportSpan.todos => 'Todos',
       ReportSpan.hoje => 'Hoje',

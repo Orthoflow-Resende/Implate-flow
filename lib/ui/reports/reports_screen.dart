@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../domain/models.dart';
 import '../../domain/queries.dart';
+import '../core/filter_menu.dart';
 import '../core/layout.dart';
 import '../view_models.dart';
 
@@ -64,7 +65,44 @@ class ReportsScreen extends StatelessWidget {
     final patients = viewModel.patients;
     final totals = viewModel.totals;
     return Scaffold(
-      appBar: AppBar(title: const Text('Relatórios')),
+      appBar: AppBar(
+        title: const Text('Relatórios'),
+        actions: [
+          FilterMenuButton(
+            activeCount: viewModel.activeFilterCount,
+            onClear: viewModel.clearFilters,
+            groups: [
+              FilterMenuGroup(
+                title: 'Período',
+                options: [
+                  for (final span in ReportSpan.values)
+                    FilterMenuOption(
+                      label: reportSpanLabel(span),
+                      selected: viewModel.span == span,
+                      onSelected: () => viewModel.setSpan(span),
+                    ),
+                ],
+              ),
+              FilterMenuGroup(
+                title: 'Modalidade',
+                options: [
+                  FilterMenuOption(
+                    label: 'Todas',
+                    selected: viewModel.modality == null,
+                    onSelected: () => viewModel.setModality(null),
+                  ),
+                  for (final modality in Modality.values)
+                    FilterMenuOption(
+                      label: modalityLabel(modality),
+                      selected: viewModel.modality == modality,
+                      onSelected: () => viewModel.setModality(modality),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
       body: ListView(
         key: const ValueKey('reports-scroll'),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -86,30 +124,35 @@ class ReportsScreen extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               children: [
                 _CountCard(
+                  cardKey: const ValueKey('report-count-emDia'),
                   label: 'Em dia',
                   count: totals.onTrack,
                   selected: viewModel.filter == ReportFilter.emDia,
                   onTap: () => viewModel.setFilter(ReportFilter.emDia),
                 ),
                 _CountCard(
+                  cardKey: const ValueKey('report-count-atrasados'),
                   label: 'Atrasados',
                   count: totals.overdue,
                   selected: viewModel.filter == ReportFilter.atrasados,
                   onTap: () => viewModel.setFilter(ReportFilter.atrasados),
                 ),
                 _CountCard(
+                  cardKey: const ValueKey('report-count-faltas'),
                   label: 'Faltas registradas',
                   count: totals.absences,
                   selected: viewModel.filter == ReportFilter.faltas,
                   onTap: () => viewModel.setFilter(ReportFilter.faltas),
                 ),
                 _CountCard(
+                  cardKey: const ValueKey('report-count-proximos'),
                   label: 'Próximos',
                   count: totals.upcoming,
                   selected: viewModel.filter == ReportFilter.proximos,
                   onTap: () => viewModel.setFilter(ReportFilter.proximos),
                 ),
                 _CountCard(
+                  cardKey: const ValueKey('report-count-realizados'),
                   label: 'Realizados',
                   count: totals.completed,
                   selected: viewModel.filter == ReportFilter.realizados,
@@ -117,32 +160,6 @@ class ReportsScreen extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final filter in ReportFilter.values)
-                ChoiceChip(
-                  label: Text(reportFilterLabel(filter)),
-                  selected: viewModel.filter == filter,
-                  onSelected: (_) => viewModel.setFilter(filter),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final span in ReportSpan.values)
-                ChoiceChip(
-                  label: Text(reportSpanLabel(span)),
-                  selected: viewModel.span == span,
-                  onSelected: (_) => viewModel.setSpan(span),
-                ),
-            ],
           ),
           if (viewModel.span == ReportSpan.personalizado) ...[
             const SizedBox(height: 8),
@@ -167,24 +184,6 @@ class ReportsScreen extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('Todas'),
-                selected: viewModel.modality == null,
-                onSelected: (_) => viewModel.setModality(null),
-              ),
-              for (final modality in Modality.values)
-                ChoiceChip(
-                  label: Text(modalityLabel(modality)),
-                  selected: viewModel.modality == modality,
-                  onSelected: (_) => viewModel.setModality(modality),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
           TextField(
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.search),
@@ -208,10 +207,15 @@ class ReportsScreen extends StatelessWidget {
           else if (patients.isEmpty)
             AppEmptyHint(_emptyLabel(viewModel.filter))
           else
-            for (final patient in patients) ...[
+            for (final patient in viewModel.visiblePatients) ...[
               _PatientReportCard(viewModel: viewModel, patient: patient),
               const SizedBox(height: 8),
             ],
+          if (viewModel.hasMore)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(onPressed: viewModel.showMore, child: const Text('Mostrar mais')),
+            ),
         ],
       ),
     );
@@ -228,12 +232,14 @@ class ReportsScreen extends StatelessWidget {
 
 class _CountCard extends StatelessWidget {
   const _CountCard({
+    required this.cardKey,
     required this.label,
     required this.count,
     required this.selected,
     required this.onTap,
   });
 
+  final Key cardKey;
   final String label;
   final int count;
   final bool selected;
@@ -246,18 +252,24 @@ class _CountCard extends StatelessWidget {
       padding: const EdgeInsets.only(right: 8),
       child: SizedBox(
         width: 148,
-        child: AppSurfaceCard(
-          color: selected ? scheme.primaryContainer : null,
-          onTap: onTap,
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('$count', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
-            ],
+        child: Semantics(
+          key: cardKey,
+          button: true,
+          selected: selected,
+          label: label,
+          child: AppSurfaceCard(
+            color: selected ? scheme.primaryContainer : null,
+            onTap: onTap,
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('$count', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
+              ],
+            ),
           ),
         ),
       ),
@@ -296,7 +308,7 @@ class _AppointmentList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = viewModel.appointments;
+    final rows = viewModel.visibleAppointments;
     if (rows.isEmpty) return const AppEmptyHint('Nenhum compromisso nesse recorte.');
     return Column(
       children: [

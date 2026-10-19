@@ -117,16 +117,26 @@ void main() {
         (widget) => widget is Scrollable && widget.axisDirection == AxisDirection.down,
       ),
     );
-    await tester.scrollUntilVisible(find.text('Pacientes em atraso'), 200, scrollable: reportsScroll);
-    final overdueChip = tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Pacientes em atraso'));
-    expect(overdueChip.selected, isTrue);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('report-count-atrasados')),
+      200,
+      scrollable: reportsScroll,
+    );
+    expect(
+      tester.widget<Semantics>(find.byKey(const ValueKey('report-count-atrasados'))).properties.selected,
+      isTrue,
+    );
     await tester.scrollUntilVisible(find.text('Ana Costa'), 300, scrollable: reportsScroll);
     expect(find.text('Ana Costa'), findsOneWidget);
     expect(find.text('2 compromissos'), findsOneWidget);
     expect(find.text('Bruno Dias'), findsNothing);
 
-    await tester.scrollUntilVisible(find.text('Faltas'), -300, scrollable: reportsScroll);
-    await tester.tap(find.text('Faltas'));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('report-count-faltas')),
+      -300,
+      scrollable: reportsScroll,
+    );
+    await tester.tap(find.byKey(const ValueKey('report-count-faltas')));
     await tester.pumpAndSettle();
     expect(find.text('Bruno Dias'), findsOneWidget);
     expect(find.text('Ana Costa'), findsNothing);
