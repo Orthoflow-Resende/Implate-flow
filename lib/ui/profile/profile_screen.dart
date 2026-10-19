@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../domain/models.dart';
 import '../../domain/practice.dart';
+import '../core/app_sheet.dart';
 import '../core/brazilian_phone_field.dart';
 import '../core/layout.dart';
 import '../view_models.dart';
@@ -188,7 +189,7 @@ Future<void> _editLocation(
   ProfileViewModel viewModel, {
   CareLocation? location,
 }) async {
-  final draft = await showDialog<({String name, String address})>(
+  final draft = await showAppSheet<({String name, String address})>(
     context: context,
     builder: (context) => _LocationDialog(location: location),
   );
@@ -222,30 +223,31 @@ class _LocationDialogState extends State<_LocationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.location == null ? 'Novo local' : 'Editar local'),
-      content: Column(
+    final initialName = widget.location?.name ?? '';
+    final initialAddress = widget.location?.address ?? '';
+    return AppSheet(
+      title: widget.location == null ? 'Novo local' : 'Editar local',
+      dirty: name.text.trim() != initialName || address.text.trim() != initialAddress,
+      footer: AppSheetActions(
+        onSave: () => AppSheet.pop(context, (name: name.text.trim(), address: address.text.trim())),
+      ),
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
             controller: name,
             decoration: const InputDecoration(labelText: 'Nome'),
             textCapitalization: TextCapitalization.words,
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: address,
             decoration: const InputDecoration(labelText: 'Endereço'),
+            onChanged: (_) => setState(() {}),
           ),
         ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, (name: name.text.trim(), address: address.text.trim())),
-          child: const Text('Salvar'),
-        ),
-      ],
     );
   }
 }
@@ -259,23 +261,24 @@ Future<String?> _pickReplacement(
     for (final location in locations)
       if (location.active && location.id != currentId) location,
   ];
-  return showDialog<String>(
+  return showAppSheet<String>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Escolha o novo padrão'),
-      content: Column(
+    builder: (context) => AppSheet(
+      title: 'Escolha o novo padrão',
+      footer: Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton(onPressed: () => AppSheet.pop(context), child: const Text('Cancelar')),
+      ),
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           for (final location in options)
             ListTile(
               title: Text(location.name),
-              onTap: () => Navigator.pop(context, location.id),
+              onTap: () => AppSheet.pop(context, location.id),
             ),
         ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-      ],
     ),
   );
 }

@@ -31,7 +31,7 @@ void main() {
     await tester.tap(find.text('Adicionar local'));
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField)).first,
+      find.descendant(of: find.byType(BottomSheet), matching: find.byType(TextField)).first,
       'Consultório Sul',
     );
     await tester.tap(find.text('Salvar'));

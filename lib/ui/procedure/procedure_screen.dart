@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../data/services/clinic_files.dart';
 import '../../domain/models.dart';
 import '../../domain/practice.dart';
+import '../core/app_sheet.dart';
 import '../core/layout.dart';
 import '../view_models.dart';
 import 'traceability_editor.dart';
@@ -195,42 +196,35 @@ class ProcedureScreen extends StatelessWidget {
   }
 
   Future<void> _editNotes(BuildContext context, ProcedureViewModel viewModel) async {
-    final notes = TextEditingController(text: viewModel.procedure.notes);
-    final ok = await showDialog<bool>(
+    final notes = await showAppSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Notas do procedimento'),
-        content: TextField(
-          controller: notes,
-          maxLines: 5,
-          decoration: const InputDecoration(labelText: 'Observação'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Salvar')),
-        ],
+      builder: (context) => _TextSheet(
+        title: 'Notas do procedimento',
+        label: 'Observação',
+        initial: viewModel.procedure.notes,
+        maxLines: 5,
       ),
     );
-    if (ok == true) viewModel.saveNotes(notes.text);
-    notes.dispose();
+    if (notes != null) viewModel.saveNotes(notes);
   }
 
   Future<void> _addPhoto(BuildContext context, ProcedureViewModel viewModel) async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final source = await showAppSheet<ImageSource>(
       context: context,
-      builder: (context) => SafeArea(
+      builder: (context) => AppSheet(
+        title: 'Adicionar foto',
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
               title: const Text('Câmera'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
+              onTap: () => AppSheet.pop(context, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
               title: const Text('Galeria'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
+              onTap: () => AppSheet.pop(context, ImageSource.gallery),
             ),
           ],
         ),
@@ -239,36 +233,21 @@ class ProcedureScreen extends StatelessWidget {
     if (source == null) return;
     final picked = await ImagePicker().pickImage(source: source);
     if (picked == null || !context.mounted) return;
-    final caption = TextEditingController();
-    final ok = await showDialog<bool>(
+    final caption = await showAppSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Legenda da foto'),
-        content: TextField(
-          controller: caption,
-          decoration: const InputDecoration(labelText: 'Legenda'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Salvar')),
-        ],
-      ),
+      builder: (context) => const _TextSheet(title: 'Legenda da foto', label: 'Legenda'),
     );
-    if (ok != true) {
-      caption.dispose();
-      return;
-    }
+    if (caption == null) return;
     final id = viewModel.repository.allocateId('fot');
     final extension = picked.name.contains('.') ? picked.name.split('.').last : 'jpg';
     final path = await ClinicFiles().copyFile(picked.path, '$id.$extension');
     viewModel.addPhoto(
       ClinicPhoto(
         id: id,
-        caption: caption.text.trim().isEmpty ? 'Foto' : caption.text.trim(),
+        caption: caption.trim().isEmpty ? 'Foto' : caption.trim(),
         path: path,
       ),
     );
-    caption.dispose();
   }
 
   Future<void> _visit(
@@ -311,6 +290,48 @@ class ProcedureScreen extends StatelessWidget {
   }
 }
 
+class _TextSheet extends StatefulWidget {
+  const _TextSheet({
+    required this.title,
+    required this.label,
+    this.initial = '',
+    this.maxLines = 1,
+  });
+
+  final String title;
+  final String label;
+  final String initial;
+  final int maxLines;
+
+  @override
+  State<_TextSheet> createState() => _TextSheetState();
+}
+
+class _TextSheetState extends State<_TextSheet> {
+  late final note = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    note.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSheet(
+      title: widget.title,
+      dirty: note.text != widget.initial,
+      footer: AppSheetActions(onSave: () => AppSheet.pop(context, note.text)),
+      child: TextField(
+        controller: note,
+        maxLines: widget.maxLines,
+        decoration: InputDecoration(labelText: widget.label),
+        onChanged: (_) => setState(() {}),
+      ),
+    );
+  }
+}
+
 class _ConsultationResult {
   const _ConsultationResult({
     required this.note,
@@ -335,7 +356,7 @@ Future<_ConsultationResult?> _consultationDialog(
       ? [for (final status in GraftStatus.values) graftStatusLabel(status)]
       : [for (final status in ImplantStatus.values) implantStatusLabel(status)];
   final status = options.contains(procedure.statusLabel) ? procedure.statusLabel : options.first;
-  return showDialog<_ConsultationResult>(
+  return showAppSheet<_ConsultationResult>(
     context: context,
     builder: (context) => _ConsultationDialog(
       title: title,
@@ -397,9 +418,22 @@ class _ConsultationDialogState extends State<_ConsultationDialog> {
   @override
   Widget build(BuildContext context) {
     final askStatus = widget.showStatus && (!widget.withAttendance || attendance == ReturnStatus.realizado);
-    return AlertDialog(
-      title: Text(widget.title),
-      content: Column(
+    return AppSheet(
+      title: widget.title,
+      dirty: note.text.trim().isNotEmpty ||
+          attendance != ReturnStatus.realizado ||
+          status != widget.initialStatus,
+      footer: AppSheetActions(
+        onSave: () => AppSheet.pop(
+          context,
+          _ConsultationResult(
+            note: note.text,
+            statusLabel: status,
+            attendance: widget.withAttendance ? attendance : ReturnStatus.realizado,
+          ),
+        ),
+      ),
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.withAttendance)
@@ -414,6 +448,7 @@ class _ConsultationDialogState extends State<_ConsultationDialog> {
           TextField(
             controller: note,
             decoration: const InputDecoration(labelText: 'Observação'),
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
           if (askStatus) ...[
@@ -433,20 +468,6 @@ class _ConsultationDialogState extends State<_ConsultationDialog> {
           ],
         ],
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-        FilledButton(
-          onPressed: () => Navigator.pop(
-            context,
-            _ConsultationResult(
-              note: note.text,
-              statusLabel: status,
-              attendance: widget.withAttendance ? attendance : ReturnStatus.realizado,
-            ),
-          ),
-          child: const Text('Salvar'),
-        ),
-      ],
     );
   }
 }
