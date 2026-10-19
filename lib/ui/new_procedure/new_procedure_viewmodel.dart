@@ -89,6 +89,22 @@ class PieceDraft {
   }
 }
 
+class ExtraReturnDraft {
+  ExtraReturnDraft({
+    required this.id,
+    required this.reason,
+    required this.date,
+    required this.reminderEnabled,
+    required this.reminderDaysBefore,
+  });
+
+  final int id;
+  final ReturnReason reason;
+  DateTime date;
+  bool reminderEnabled;
+  int reminderDaysBefore;
+}
+
 class NewProcedureViewModel extends ChangeNotifier {
   NewProcedureViewModel(this.repository, {required this.patientId}) {
     final profile = repository.current.profile;
@@ -110,6 +126,8 @@ class NewProcedureViewModel extends ChangeNotifier {
   late DateTime longReturn = surgery.add(const Duration(days: 90));
   late bool longReminder;
   late int longLead;
+  final List<ExtraReturnDraft> extraReturns = [];
+  int _extraSeq = 0;
 
   List<int> get ordered => selected.toList()..sort(compareTeeth);
 
@@ -234,6 +252,80 @@ class NewProcedureViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void addExtraReturn(ReturnReason reason) {
+    extraReturns.add(
+      ExtraReturnDraft(
+        id: _extraSeq++,
+        reason: reason,
+        date: _freeReturnDate(_seedFor(reason)),
+        reminderEnabled: longReminder,
+        reminderDaysBefore: longLead,
+      ),
+    );
+    _sortExtraReturns();
+    notifyListeners();
+  }
+
+  void setExtraDate(int id, DateTime value) {
+    final draft = _extraById(id);
+    if (draft == null) return;
+    draft.date = dateOnly(value);
+    _sortExtraReturns();
+    notifyListeners();
+  }
+
+  void setExtraReminder(int id, bool value) {
+    final draft = _extraById(id);
+    if (draft == null) return;
+    draft.reminderEnabled = value;
+    notifyListeners();
+  }
+
+  void setExtraLead(int id, int value) {
+    final draft = _extraById(id);
+    if (draft == null) return;
+    draft.reminderDaysBefore = normalizeReminderDaysBefore(value);
+    notifyListeners();
+  }
+
+  void removeExtraReturn(int id) {
+    extraReturns.removeWhere((item) => item.id == id);
+    notifyListeners();
+  }
+
+  ExtraReturnDraft? _extraById(int id) {
+    for (final draft in extraReturns) {
+      if (draft.id == id) return draft;
+    }
+    return null;
+  }
+
+  DateTime _seedFor(ReturnReason reason) {
+    if (reason == ReturnReason.reabertura) return addCalendarMonths(longReturn, 1);
+    return surgery.add(const Duration(days: 30));
+  }
+
+  DateTime _freeReturnDate(DateTime seed) {
+    var date = dateOnly(seed);
+    final taken = {
+      dateOnly(suture),
+      dateOnly(longReturn),
+      for (final extra in extraReturns) dateOnly(extra.date),
+    };
+    while (taken.contains(date)) {
+      date = date.add(const Duration(days: 1));
+    }
+    return date;
+  }
+
+  void _sortExtraReturns() {
+    extraReturns.sort((a, b) {
+      final byDate = a.date.compareTo(b.date);
+      if (byDate != 0) return byDate;
+      return returnReasonOrder(a.reason).compareTo(returnReasonOrder(b.reason));
+    });
+  }
+
   void copyFromFirst() {
     final first = drafts[pillars.first];
     if (first == null) return;
@@ -307,7 +399,7 @@ class NewProcedureViewModel extends ChangeNotifier {
                 grafts: _graftsFor(tooth),
               ),
           ],
-          followUps: [
+          followUps: chronologicalFollowUps([
             FollowUp(
               id: repository.allocateId('ret'),
               date: suture,
@@ -315,6 +407,15 @@ class NewProcedureViewModel extends ChangeNotifier {
               status: ReturnStatus.agendado,
               reminderEnabled: false,
             ),
+            for (final extra in extraReturns)
+              FollowUp(
+                id: repository.allocateId('ret'),
+                date: extra.date,
+                reason: extra.reason,
+                status: ReturnStatus.agendado,
+                reminderEnabled: extra.reminderEnabled,
+                reminderDaysBefore: extra.reminderDaysBefore,
+              ),
             FollowUp(
               id: repository.allocateId('ret'),
               date: longReturn,
@@ -323,7 +424,7 @@ class NewProcedureViewModel extends ChangeNotifier {
               reminderEnabled: longReminder,
               reminderDaysBefore: longLead,
             ),
-          ],
+          ]),
         ),
       );
     }

@@ -54,16 +54,25 @@ class ProfileScreen extends StatelessWidget {
                 if (profile.reminderEnabled)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    child: Row(
                       children: [
-                        for (final days in reminderLeadDayOptions)
-                          ChoiceChip(
-                            label: Text(reminderLeadLabel(days)),
-                            selected: profile.reminderDaysBefore == days,
-                            onSelected: (_) => viewModel.setReminderDaysBefore(days),
+                        for (final days in reminderLeadDayOptions) ...[
+                          if (days != reminderLeadDayOptions.first) const SizedBox(width: 8),
+                          Expanded(
+                            child: ChoiceChip(
+                              showCheckmark: false,
+                              label: SizedBox(
+                                width: double.infinity,
+                                child: Text(
+                                  reminderLeadChipLabel(days),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              selected: profile.reminderDaysBefore == days,
+                              onSelected: (_) => viewModel.setReminderDaysBefore(days),
+                            ),
                           ),
+                        ],
                       ],
                     ),
                   ),

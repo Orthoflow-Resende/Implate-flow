@@ -81,11 +81,14 @@ void main() {
 
     expect(find.text('Data de retorno'), findsNWidgets(2));
     expect(find.text('Lembrete'), findsOneWidget);
-    expect(find.text('15 dias antes'), findsOneWidget);
+    expect(find.text('15 dias'), findsOneWidget);
+    final chipTop = tester.getRect(find.widgetWithText(ChoiceChip, '15 dias')).top;
+    expect(tester.getRect(find.widgetWithText(ChoiceChip, '7 dias')).top, chipTop);
+    expect(tester.getRect(find.widgetWithText(ChoiceChip, '30 dias')).top, chipTop);
     expect(find.text('Avisar no dia'), findsNothing);
     expect(find.text('8h'), findsNothing);
 
-    final sevenDays = find.text('7 dias antes');
+    final sevenDays = find.text('7 dias');
     await tester.ensureVisible(sevenDays);
     await tester.tap(sevenDays);
     await tester.pump();
@@ -108,7 +111,7 @@ void main() {
 
     expect(find.text('Lembrar antes do retorno'), findsOneWidget);
     expect(find.text('Avisar no dia'), findsNothing);
-    final chip = tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '15 dias antes'));
+    final chip = tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '15 dias'));
     expect(chip.selected, isTrue);
   });
 }

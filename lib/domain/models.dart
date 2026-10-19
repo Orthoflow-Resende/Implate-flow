@@ -31,6 +31,8 @@ enum ReturnReason {
   instalarImplante,
   instalarPonte,
   instalarProtocolo,
+  controle,
+  reabertura,
 }
 
 enum ReturnStatus { agendado, realizado, faltou }
@@ -166,7 +168,27 @@ String returnReasonLabel(ReturnReason reason) => switch (reason) {
       ReturnReason.instalarImplante => 'Instalar o implante',
       ReturnReason.instalarPonte => 'Instalar a ponte',
       ReturnReason.instalarProtocolo => 'Instalar o protocolo',
+      ReturnReason.controle => 'Retorno de controle',
+      ReturnReason.reabertura => 'Retorno para reabertura',
     };
+
+int returnReasonOrder(ReturnReason reason) => switch (reason) {
+      ReturnReason.sutura => 0,
+      ReturnReason.controle => 1,
+      ReturnReason.reabertura => 2,
+      ReturnReason.osseointegracao => 3,
+      ReturnReason.instalarImplante => 3,
+      ReturnReason.instalarPonte => 3,
+      ReturnReason.instalarProtocolo => 3,
+    };
+
+List<FollowUp> chronologicalFollowUps(List<FollowUp> followUps) {
+  return [...followUps]..sort((a, b) {
+      final byDate = dateOnly(a.date).compareTo(dateOnly(b.date));
+      if (byDate != 0) return byDate;
+      return returnReasonOrder(a.reason).compareTo(returnReasonOrder(b.reason));
+    });
+}
 
 String returnStatusLabel(ReturnStatus status) => switch (status) {
       ReturnStatus.agendado => 'Agendado',
@@ -558,7 +580,6 @@ String reminderLine({
   return '${patient.name}, ${procedure.teethLabel}, ${returnReasonLabel(followUp.reason)}';
 }
 
-String reminderLeadLabel(int days) {
-  final span = days == 1 ? '1 dia' : '$days dias';
-  return '$span antes';
-}
+String reminderLeadChipLabel(int days) => days == 1 ? '1 dia' : '$days dias';
+
+String reminderLeadLabel(int days) => '${reminderLeadChipLabel(days)} antes';

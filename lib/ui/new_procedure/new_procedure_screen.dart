@@ -180,20 +180,18 @@ class _SummaryStep extends StatelessWidget {
                 subtitle: 'Sutura em 7 dias · longo em ${viewModel.longMonths} meses.',
               ),
               const SizedBox(height: 8),
-              _ReturnEditor(
-                title: 'Sutura',
-                date: viewModel.suture,
-                onDate: viewModel.setSuture,
-              ),
+              ..._chronologicalReturnEditors(viewModel),
               const SizedBox(height: 12),
-              _ReturnEditor(
-                title: 'Retorno longo',
-                date: viewModel.longReturn,
-                enabled: viewModel.longReminder,
-                daysBefore: viewModel.longLead,
-                onDate: viewModel.setLongReturn,
-                onEnabled: viewModel.setLongReminder,
-                onDaysBefore: viewModel.setLongLead,
+              OutlinedButton.icon(
+                onPressed: () => viewModel.addExtraReturn(ReturnReason.controle),
+                icon: const Icon(Icons.add),
+                label: const Text('Retorno de controle'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => viewModel.addExtraReturn(ReturnReason.reabertura),
+                icon: const Icon(Icons.add),
+                label: const Text('Retorno para reabertura'),
               ),
             ],
           ),
@@ -572,8 +570,46 @@ class _GraftFields extends StatelessWidget {
   }
 }
 
+List<Widget> _chronologicalReturnEditors(NewProcedureViewModel viewModel) {
+  final editors = <Widget>[
+    _ReturnEditor(
+      title: 'Sutura',
+      date: viewModel.suture,
+      onDate: viewModel.setSuture,
+    ),
+    _ReturnEditor(
+      title: 'Retorno longo',
+      date: viewModel.longReturn,
+      enabled: viewModel.longReminder,
+      daysBefore: viewModel.longLead,
+      onDate: viewModel.setLongReturn,
+      onEnabled: viewModel.setLongReminder,
+      onDaysBefore: viewModel.setLongLead,
+    ),
+    for (final extra in viewModel.extraReturns)
+      _ReturnEditor(
+        key: ValueKey(extra.id),
+        title: returnReasonLabel(extra.reason),
+        date: extra.date,
+        enabled: extra.reminderEnabled,
+        daysBefore: extra.reminderDaysBefore,
+        onDate: (value) => viewModel.setExtraDate(extra.id, value),
+        onEnabled: (value) => viewModel.setExtraReminder(extra.id, value),
+        onDaysBefore: (value) => viewModel.setExtraLead(extra.id, value),
+        onRemove: () => viewModel.removeExtraReturn(extra.id),
+      ),
+  ];
+  return [
+    for (var index = 0; index < editors.length; index++) ...[
+      if (index > 0) const SizedBox(height: 12),
+      editors[index],
+    ],
+  ];
+}
+
 class _ReturnEditor extends StatelessWidget {
   const _ReturnEditor({
+    super.key,
     required this.title,
     required this.date,
     required this.onDate,
@@ -581,6 +617,7 @@ class _ReturnEditor extends StatelessWidget {
     this.daysBefore,
     this.onEnabled,
     this.onDaysBefore,
+    this.onRemove,
   });
 
   final String title;
@@ -590,6 +627,7 @@ class _ReturnEditor extends StatelessWidget {
   final ValueChanged<DateTime> onDate;
   final ValueChanged<bool>? onEnabled;
   final ValueChanged<int>? onDaysBefore;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -609,7 +647,25 @@ class _ReturnEditor extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-              child: Text(title, style: theme.textTheme.titleMedium),
+              child: Row(
+                children: [
+                  Expanded(child: Text(title, style: theme.textTheme.titleMedium)),
+                  if (onRemove != null)
+                    IconButton(
+                      tooltip: 'Remover retorno',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: onRemove,
+                      icon: const Icon(Icons.close),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              child: Text(
+                returnStatusLabel(ReturnStatus.agendado),
+                style: theme.textTheme.bodySmall,
+              ),
             ),
             _DateTile(
               icon: Icons.event_outlined,
@@ -627,16 +683,25 @@ class _ReturnEditor extends StatelessWidget {
               if (reminding) ...[
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                  child: Row(
                     children: [
-                      for (final option in reminderLeadDayOptions)
-                        ChoiceChip(
-                          label: Text(reminderLeadLabel(option)),
-                          selected: lead == option,
-                          onSelected: (_) => changeLead(option),
+                      for (final option in reminderLeadDayOptions) ...[
+                        if (option != reminderLeadDayOptions.first) const SizedBox(width: 8),
+                        Expanded(
+                          child: ChoiceChip(
+                            showCheckmark: false,
+                            label: SizedBox(
+                              width: double.infinity,
+                              child: Text(
+                                reminderLeadChipLabel(option),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            selected: lead == option,
+                            onSelected: (_) => changeLead(option),
+                          ),
                         ),
+                      ],
                     ],
                   ),
                 ),
