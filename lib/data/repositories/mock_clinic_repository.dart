@@ -15,10 +15,12 @@ class MockClinicRepository implements ClinicRepository {
   MockClinicRepository.fromSnapshot(
     this._snapshot, {
     this._persist,
+    this.ids,
   });
 
   ClinicSnapshot _snapshot;
   final Future<void> Function(ClinicSnapshot snapshot)? _persist;
+  final String Function()? ids;
   final _updates = StreamController<ClinicSnapshot>.broadcast();
   final List<String> _delayNoticeFollowUpIds = [];
 
@@ -40,6 +42,15 @@ class MockClinicRepository implements ClinicRepository {
     _updates.add(next);
     _persist?.call(next);
   }
+
+  @override
+  Stream<String> get syncErrors => const Stream<String>.empty();
+
+  @override
+  void bindUnauthorized(Future<String?> Function() refresh) {}
+
+  @override
+  Future<void> refresh() async {}
 
   @override
   void applyOverdueNotices() {
@@ -68,8 +79,10 @@ class MockClinicRepository implements ClinicRepository {
     }
   }
 
+  void replaceSnapshot(ClinicSnapshot snapshot) => _emit(snapshot);
+
   @override
-  void signIn({required String name, required String email}) {
+  void signIn({required String name, required String email, String accessToken = ''}) {
     _emit(
       _snapshot.copyWith(
         signedIn: true,
@@ -87,7 +100,7 @@ class MockClinicRepository implements ClinicRepository {
   String allocateId(String prefix) {
     final next = _snapshot.sequence + 1;
     _snapshot = _snapshot.copyWith(sequence: next);
-    return '$prefix-$next';
+    return ids?.call() ?? '$prefix-$next';
   }
 
   @override

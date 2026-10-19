@@ -119,13 +119,7 @@ class WorkOsSignIn(
                 } catch (error: Exception) {
                     Log.e(TAG, "Could not store WorkOS session", error)
                 }
-                result.success(
-                    hashMapOf(
-                        "id" to identity.id,
-                        "email" to identity.email,
-                        "name" to identity.name,
-                    ),
-                )
+                result.success(identity.toMap())
             } catch (error: Exception) {
                 Log.e(TAG, "WorkOS code exchange failed", error)
                 result.error("exchange", error.message?.takeIf { it.isNotBlank() } ?: "Não foi possível concluir o login.", null)
@@ -166,13 +160,7 @@ class WorkOsSignIn(
                 } catch (error: Exception) {
                     Log.e(TAG, "Could not store WorkOS session", error)
                 }
-                result.success(
-                    hashMapOf(
-                        "id" to identity.id,
-                        "email" to identity.email,
-                        "name" to identity.name,
-                    ),
-                )
+                result.success(identity.toMap())
             } catch (error: Exception) {
                 Log.w(TAG, "Could not refresh the WorkOS profile", error)
                 result.success(null)
@@ -292,12 +280,14 @@ class WorkOsSignIn(
             val json = JSONObject(payload)
             val user = json.getJSONObject("user")
             val email = user.getString("email")
+            val accessToken = json.optString("access_token").takeIf { it.isNotBlank() }
             return WorkOsIdentity(
                 id = user.getString("id"),
                 email = email,
                 name = registeredName(user, email),
                 refreshToken = json.optString("refresh_token").takeIf { it.isNotBlank() },
-                sessionId = sessionIdFrom(json.optString("access_token")),
+                accessToken = accessToken,
+                sessionId = sessionIdFrom(accessToken ?: ""),
             )
         } finally {
             connection.disconnect()
@@ -365,8 +355,16 @@ private data class WorkOsIdentity(
     val email: String,
     val name: String,
     val refreshToken: String?,
+    val accessToken: String?,
     val sessionId: String?,
-)
+) {
+    fun toMap(): HashMap<String, String> = hashMapOf(
+        "id" to id,
+        "email" to email,
+        "name" to name,
+        "accessToken" to (accessToken ?: ""),
+    )
+}
 
 private class WorkOsExchangeException(message: String) : Exception(message)
 

@@ -160,6 +160,7 @@ String stageNoticeStatusLabel(StageNotice notice) => switch (notice.delivery) {
         'Aguardando confirmação do envio · ${notice.channels.join(' e ')}',
       NoticeDelivery.falha => 'Falha no envio · ${notice.channels.join(' e ')}',
       NoticeDelivery.revogada => 'Envio cancelado · canal desativado',
+      NoticeDelivery.enviado => 'Enviado · ${notice.channels.join(' e ')}',
     };
 
 List<StageNotice> revokePendingNotices(List<StageNotice> notices, Patient patient) {

@@ -4,15 +4,21 @@ import '../../domain/models.dart';
 abstract class ClinicRepository {
   Stream<ClinicSnapshot> watch();
 
+  Stream<String> get syncErrors => const Stream<String>.empty();
+
   ClinicSnapshot get current;
 
   List<String> get delayNoticeFollowUpIds;
 
   void applyOverdueNotices();
 
-  void signIn({required String name, required String email});
+  void bindUnauthorized(Future<String?> Function() refresh) {}
+
+  void signIn({required String name, required String email, String accessToken = ''});
 
   void signOut();
+
+  Future<void> refresh() async {}
 
   Patient createPatient({
     required String name,

@@ -546,7 +546,7 @@ class Patient {
   }
 }
 
-enum NoticeDelivery { aguardando, falha, revogada }
+enum NoticeDelivery { aguardando, falha, revogada, enviado }
 
 class StageNotice {
   const StageNotice({

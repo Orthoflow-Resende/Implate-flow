@@ -73,7 +73,12 @@ final class WorkOsSignIn: NSObject, ASWebAuthenticationPresentationContextProvid
         }
         await MainActor.run {
           self.accessToken = identity.accessToken
-          result(["id": identity.id, "email": identity.email, "name": identity.name])
+          result([
+            "id": identity.id,
+            "email": identity.email,
+            "name": identity.name,
+            "accessToken": identity.accessToken,
+          ])
         }
       } catch {
         await MainActor.run {
@@ -160,6 +165,7 @@ final class WorkOsSignIn: NSObject, ASWebAuthenticationPresentationContextProvid
               lastName: user.lastName,
               email: user.email
             ),
+            "accessToken": token,
           ])
         }
       } catch {

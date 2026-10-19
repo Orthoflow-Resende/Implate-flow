@@ -1,3 +1,5 @@
+import 'dart:io';
+
 class AppConfig {
   const AppConfig._();
 
@@ -7,4 +9,13 @@ class AppConfig {
     'WORKOS_REDIRECT_URI',
     defaultValue: 'br.com.implateflow://auth/callback',
   );
+
+  static const _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+  /// Emulador Android fala com a máquina em `10.0.2.2`. Simulador iOS e desktop usam `127.0.0.1`.
+  static String get apiBaseUrl {
+    if (_apiBaseUrl.isNotEmpty) return _apiBaseUrl;
+    if (Platform.isAndroid) return 'http://10.0.2.2:3000';
+    return 'http://127.0.0.1:3000';
+  }
 }

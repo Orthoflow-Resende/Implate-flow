@@ -23,22 +23,32 @@ class RepositoryViewModel extends ChangeNotifier {
       loadError = 'Não foi possível atualizar os relatórios.';
       notifyListeners();
     });
+    _syncErrors = repository.syncErrors.listen((message) {
+      loadError = message;
+      notifyListeners();
+    });
   }
 
   final ClinicRepository repository;
   late ClinicSnapshot snapshot = repository.current;
   String? loadError;
   late final StreamSubscription<ClinicSnapshot> _subscription;
+  late final StreamSubscription<String> _syncErrors;
 
   @override
   void dispose() {
     _subscription.cancel();
+    _syncErrors.cancel();
     super.dispose();
   }
 }
 
 class SessionViewModel extends RepositoryViewModel {
   SessionViewModel(super.repository, this.auth) {
+    repository.bindUnauthorized(() async {
+      final identity = await auth.currentIdentity(clientId: AppConfig.workOsClientId);
+      return identity?.accessToken;
+    });
     unawaited(syncWorkOsName());
   }
 
@@ -63,7 +73,12 @@ class SessionViewModel extends RepositoryViewModel {
         clientId: AppConfig.workOsClientId,
         redirectUri: AppConfig.workOsRedirectUri,
       );
-      repository.signIn(name: identity.name, email: identity.email);
+      repository.signIn(
+        name: identity.name,
+        email: identity.email,
+        accessToken: identity.accessToken,
+      );
+      await repository.refresh();
     } on WorkOsAuthException catch (error) {
       this.error = error.message;
     } finally {
@@ -77,8 +92,12 @@ class SessionViewModel extends RepositoryViewModel {
     try {
       final identity = await auth.currentIdentity(clientId: AppConfig.workOsClientId);
       if (identity == null) return;
-      if (identity.name == snapshot.profile.name && identity.email == snapshot.profile.email) return;
-      repository.signIn(name: identity.name, email: identity.email);
+      repository.signIn(
+        name: identity.name,
+        email: identity.email,
+        accessToken: identity.accessToken,
+      );
+      await repository.refresh();
     } on WorkOsAuthException {
       // The stored profile stays until the next successful WorkOS refresh.
     }
