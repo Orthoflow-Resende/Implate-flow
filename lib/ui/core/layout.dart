@@ -2,18 +2,48 @@ import 'package:flutter/material.dart';
 
 const appRadius = 16.0;
 
+const appCyan = Color(0xFF5BD3F3);
+const appMint = Color(0xFF74F3D8);
+const appInk = Color(0xFF383D41);
+
 ThemeData buildAppTheme() {
-  const seed = Color(0xFF0E6B66);
-  final scheme = ColorScheme.fromSeed(seedColor: seed, brightness: Brightness.light);
+  final scheme = ColorScheme.fromSeed(
+    seedColor: appCyan,
+    brightness: Brightness.light,
+  ).copyWith(
+    primary: appCyan,
+    onPrimary: appInk,
+    primaryContainer: appMint,
+    onPrimaryContainer: appInk,
+    secondary: appMint,
+    onSecondary: appInk,
+    secondaryContainer: appMint,
+    onSecondaryContainer: appInk,
+    tertiary: appMint,
+    onTertiary: appInk,
+    surface: const Color(0xFFF7FDFE),
+    onSurface: appInk,
+    onSurfaceVariant: appInk,
+    surfaceTint: Colors.transparent,
+  );
   final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(appRadius));
   return ThemeData(
     colorScheme: scheme,
-    scaffoldBackgroundColor: const Color(0xFFF4F7F6),
+    scaffoldBackgroundColor: const Color(0xFFF3FCFF),
     useMaterial3: true,
+    textTheme: ThemeData.light().textTheme.apply(bodyColor: appInk, displayColor: appInk),
+    iconTheme: const IconThemeData(color: appInk),
+    listTileTheme: const ListTileThemeData(
+      textColor: appInk,
+      iconColor: appInk,
+    ),
     appBarTheme: const AppBarTheme(
       centerTitle: false,
       elevation: 0,
       scrolledUnderElevation: 0,
+      backgroundColor: Color(0xFFF3FCFF),
+      foregroundColor: appInk,
+      surfaceTintColor: Colors.transparent,
     ),
     cardTheme: CardThemeData(
       elevation: 0,
@@ -32,24 +62,68 @@ ThemeData buildAppTheme() {
     navigationBarTheme: NavigationBarThemeData(
       elevation: 0,
       height: 68,
+      backgroundColor: scheme.surface,
+      indicatorColor: appMint,
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      iconTheme: const WidgetStatePropertyAll(IconThemeData(color: appInk)),
+      labelTextStyle: const WidgetStatePropertyAll(TextStyle(color: appInk)),
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
       elevation: 2,
       highlightElevation: 2,
+      backgroundColor: appCyan,
+      foregroundColor: appInk,
     ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: appInk),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size(0, 48),
+        backgroundColor: appCyan,
+        foregroundColor: appInk,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(0, 48),
+        backgroundColor: Colors.transparent,
+        foregroundColor: appInk,
+        side: const BorderSide(color: appInk),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: appInk),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        foregroundColor: const WidgetStatePropertyAll(appInk),
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return appCyan;
+          return Colors.transparent;
+        }),
+      ),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: scheme.surface,
+      selectedColor: appMint,
+      disabledColor: scheme.surface,
+      labelStyle: const TextStyle(color: appInk),
+      secondaryLabelStyle: const TextStyle(color: appInk),
+      checkmarkColor: appInk,
+      side: BorderSide(color: appInk.withValues(alpha: 0.18)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return appInk;
+        return scheme.surface;
+      }),
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return appCyan;
+        return appInk.withValues(alpha: 0.2);
+      }),
     ),
     inputDecorationTheme: InputDecorationTheme(
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
