@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/services/clinic_files.dart';
 import '../../domain/models.dart';
+import '../../domain/practice.dart';
 import '../core/layout.dart';
 import '../view_models.dart';
 import 'traceability_editor.dart';
@@ -101,6 +102,30 @@ class ProcedureScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
           ],
+          const SizedBox(height: 12),
+          const AppSectionHeader(
+            title: 'Avisos ao paciente',
+            subtitle: 'Só uma mudança de etapa confirmada pode gerar aviso. A entrega depende do serviço.',
+          ),
+          const SizedBox(height: 8),
+          if (procedure.stageNotices.isEmpty)
+            const AppEmptyHint('Nenhum aviso de etapa.')
+          else
+            for (final notice in procedure.stageNotices) ...[
+              AppSurfaceCard(
+                child: ListTile(
+                  title: Text(notice.stageLabel),
+                  subtitle: Text(stageNoticeStatusLabel(notice)),
+                  trailing: notice.delivery == NoticeDelivery.falha
+                      ? TextButton(
+                          onPressed: () => viewModel.reprocessNotice(notice.id),
+                          child: const Text('Tentar novamente'),
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
           const SizedBox(height: 12),
           const AppSectionHeader(title: 'Linha do tempo'),
           const SizedBox(height: 8),
@@ -251,7 +276,12 @@ class ProcedureScreen extends StatelessWidget {
     ProcedureViewModel viewModel,
     Procedure procedure,
   ) async {
-    final result = await _consultationDialog(context, procedure, title: 'Registrar consulta');
+    final result = await _consultationDialog(
+      context,
+      procedure,
+      patient: viewModel.patient,
+      title: 'Registrar consulta',
+    );
     if (result == null) return;
     viewModel.addVisit(note: result.note, statusLabel: result.statusLabel);
   }
@@ -266,6 +296,7 @@ class ProcedureScreen extends StatelessWidget {
     final result = await _consultationDialog(
       context,
       procedure,
+      patient: viewModel.patient,
       title: 'Registrar retorno',
       withAttendance: true,
       showStatus: followUp.reason != ReturnReason.sutura,
@@ -295,6 +326,7 @@ class _ConsultationResult {
 Future<_ConsultationResult?> _consultationDialog(
   BuildContext context,
   Procedure procedure, {
+  required Patient patient,
   required String title,
   bool withAttendance = false,
   bool showStatus = true,
@@ -309,6 +341,7 @@ Future<_ConsultationResult?> _consultationDialog(
       title: title,
       options: options,
       initialStatus: status,
+      patient: patient,
       withAttendance: withAttendance,
       showStatus: showStatus,
     ),
@@ -320,6 +353,7 @@ class _ConsultationDialog extends StatefulWidget {
     required this.title,
     required this.options,
     required this.initialStatus,
+    required this.patient,
     required this.withAttendance,
     required this.showStatus,
   });
@@ -327,6 +361,7 @@ class _ConsultationDialog extends StatefulWidget {
   final String title;
   final List<String> options;
   final String initialStatus;
+  final Patient patient;
   final bool withAttendance;
   final bool showStatus;
 
@@ -343,6 +378,20 @@ class _ConsultationDialogState extends State<_ConsultationDialog> {
   void dispose() {
     note.dispose();
     super.dispose();
+  }
+
+  String _noticePreview() {
+    final plan = stageNoticePlan(
+      previousStatus: widget.initialStatus,
+      nextStatus: status,
+      clinicalChange: true,
+      patient: widget.patient,
+    );
+    if (status == widget.initialStatus) {
+      return 'Sem mudança de etapa, nenhum aviso é gerado.';
+    }
+    if (plan == null) return 'Nenhum canal habilitado para avisar o paciente.';
+    return stageNoticePreview(plan);
   }
 
   @override
@@ -367,7 +416,7 @@ class _ConsultationDialogState extends State<_ConsultationDialog> {
             decoration: const InputDecoration(labelText: 'Observação'),
           ),
           const SizedBox(height: 12),
-          if (askStatus)
+          if (askStatus) ...[
             DropdownButtonFormField<String>(
               initialValue: status,
               decoration: const InputDecoration(labelText: 'Status'),
@@ -379,6 +428,9 @@ class _ConsultationDialogState extends State<_ConsultationDialog> {
                 setState(() => status = value);
               },
             ),
+            const SizedBox(height: 8),
+            Text(_noticePreview(), style: Theme.of(context).textTheme.bodySmall),
+          ],
         ],
       ),
       actions: [

@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/models.dart';
+import '../../domain/practice.dart';
+import '../core/filter_menu.dart';
 import '../core/layout.dart';
 import '../patients/patient_editor.dart';
 import '../view_models.dart';
@@ -171,10 +173,12 @@ class _PatientPicker extends StatefulWidget {
 
 class _PatientPickerState extends State<_PatientPicker> {
   String query = '';
+  LocationFilter locationFilter = const LocationFilter.all();
 
   @override
   Widget build(BuildContext context) {
-    final matches = widget.viewModel.patientsMatching(query);
+    final matches = widget.viewModel.patientsMatching(query, location: locationFilter);
+    final locations = widget.viewModel.snapshot.profile.locations;
     return SafeArea(
       child: SizedBox(
         height: MediaQuery.sizeOf(context).height * 0.55,
@@ -197,13 +201,48 @@ class _PatientPickerState extends State<_PatientPicker> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: TextField(
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  labelText: 'Buscar por nome ou CPF',
-                ),
-                onChanged: (value) => setState(() => query = value),
+              padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search),
+                        labelText: 'Buscar por nome ou CPF',
+                      ),
+                      onChanged: (value) => setState(() => query = value),
+                    ),
+                  ),
+                  FilterMenuButton(
+                    groups: [
+                      FilterMenuGroup(
+                        title: 'Local de atendimento',
+                        options: [
+                          FilterMenuOption(
+                            label: 'Todos os locais',
+                            selected: locationFilter.isAll,
+                            onSelected: () => setState(() => locationFilter = const LocationFilter.all()),
+                          ),
+                          for (final location in activeCareLocations(locations))
+                            FilterMenuOption(
+                              label: location.name,
+                              selected: locationFilter.locationId == location.id,
+                              onSelected: () => setState(
+                                () => locationFilter = LocationFilter.place(location.id),
+                              ),
+                            ),
+                          FilterMenuOption(
+                            label: 'Sem local',
+                            selected: locationFilter.withoutLocation,
+                            onSelected: () => setState(() => locationFilter = const LocationFilter.none()),
+                          ),
+                        ],
+                      ),
+                    ],
+                    activeCount: locationFilter.isAll ? 0 : 1,
+                    onClear: () => setState(() => locationFilter = const LocationFilter.all()),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -239,15 +278,23 @@ class _PatientPickerState extends State<_PatientPicker> {
   }
 
   Future<void> _createPatient(BuildContext context) async {
-    final draft = await editPatientDraft(context, title: 'Novo paciente');
+    final draft = await editPatientDraft(
+      context,
+      title: 'Novo paciente',
+      locations: widget.viewModel.snapshot.profile.locations,
+    );
     if (draft == null || !context.mounted) return;
     final patient = widget.viewModel.repository.createPatient(
       name: draft.name,
       phone: draft.phone,
+      email: draft.email,
       cpf: draft.cpf,
       birthDate: draft.birthDate,
       notes: draft.notes,
       guardian: draft.guardian,
+      locationIds: draft.locationIds,
+      notifyByEmail: draft.notifyByEmail,
+      notifyByPhone: draft.notifyByPhone,
     );
     if (context.mounted) Navigator.pop(context, patient);
   }

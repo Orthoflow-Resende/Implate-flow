@@ -16,12 +16,16 @@ ClinicSnapshot buildDemoSnapshot() {
     final today = brasiliaToday();
     DateTime shift(int days) => today.add(Duration(days: days));
 
+    const centro = 'loc-centro';
     final maria = Patient(
       id: nextId('pac'),
       name: 'Maria Souza',
       phone: '(11) 98888-1001',
+      email: 'maria@exemplo.com',
       cpf: '390.533.447-05',
       birthDate: DateTime(1978, 4, 12),
+      locationIds: [centro],
+      notifyByEmail: true,
     );
     final joao = Patient(
       id: nextId('pac'),
@@ -283,10 +287,19 @@ ClinicSnapshot buildDemoSnapshot() {
       ),
     );
   return ClinicSnapshot(
-    profile: const DentistProfile(
+    profile: DentistProfile(
       name: 'Dra. Helena Vargas',
       email: 'helena@consultorio.exemplo',
+      phone: '(11) 3333-4040',
       cro: 'CRO-SP 00000',
+      locations: [
+        CareLocation(
+          id: centro,
+          name: 'Consultório Centro',
+          address: 'Rua das Flores, 100',
+          isDefault: true,
+        ),
+      ],
     ),
     signedIn: false,
     patients: patients,

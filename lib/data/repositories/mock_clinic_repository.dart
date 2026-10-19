@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../domain/clinic_snapshot.dart';
 import '../../domain/models.dart';
+import '../../domain/practice.dart';
 import '../services/mock_clinic_service.dart';
 import 'clinic_repository.dart';
 
@@ -93,19 +94,29 @@ class MockClinicRepository implements ClinicRepository {
   Patient createPatient({
     required String name,
     required String phone,
+    String email = '',
     String cpf = '',
     required DateTime birthDate,
     String notes = '',
     String guardian = '',
+    List<String> locationIds = const [],
+    bool notifyByEmail = false,
+    bool notifyByPhone = false,
   }) {
-    final patient = Patient(
-      id: allocateId('pac'),
-      name: name.trim(),
-      phone: phone.trim(),
-      cpf: formatCpf(cpf),
-      birthDate: birthDate,
-      notes: notes.trim(),
-      guardian: guardian.trim(),
+    final patient = normalizePatientContacts(
+      Patient(
+        id: allocateId('pac'),
+        name: name.trim(),
+        phone: phone,
+        email: email,
+        cpf: formatCpf(cpf),
+        birthDate: birthDate,
+        notes: notes.trim(),
+        guardian: guardian.trim(),
+        locationIds: locationIds,
+        notifyByEmail: notifyByEmail,
+        notifyByPhone: notifyByPhone,
+      ),
     );
     _emit(_snapshot.copyWith(patients: [..._snapshot.patients, patient]));
     return patient;
@@ -113,11 +124,21 @@ class MockClinicRepository implements ClinicRepository {
 
   @override
   void updatePatient(Patient patient) {
+    final normalized = normalizePatientContacts(patient);
     _emit(
       _snapshot.copyWith(
         patients: [
           for (final item in _snapshot.patients)
-            if (item.id == patient.id) patient else item,
+            if (item.id == normalized.id) normalized else item,
+        ],
+        procedures: [
+          for (final procedure in _snapshot.procedures)
+            if (procedure.patientId == normalized.id)
+              procedure.copyWith(
+                stageNotices: revokePendingNotices(procedure.stageNotices, normalized),
+              )
+            else
+              procedure,
         ],
       ),
     );
@@ -158,6 +179,12 @@ class MockClinicRepository implements ClinicRepository {
             statusLabel: statusLabel,
           ),
         ],
+        stageNotices: _withNotice(
+          procedure,
+          previousStatus: procedure.statusLabel,
+          nextStatus: statusLabel,
+          clinicalChange: true,
+        ),
       );
     });
   }
@@ -186,13 +213,69 @@ class MockClinicRepository implements ClinicRepository {
       );
     }
     _replace(procedure.id, (current) {
+      final nextStatus = updatesClinicalStatus ? statusLabel : current.statusLabel;
       return current.copyWith(
-        statusLabel: updatesClinicalStatus ? statusLabel : current.statusLabel,
+        statusLabel: nextStatus,
         followUps: [
           for (final item in current.followUps)
             if (item.id == followUpId) item.copyWith(status: returnStatus) else item,
         ],
         visits: visits,
+        stageNotices: _withNotice(
+          current,
+          previousStatus: current.statusLabel,
+          nextStatus: nextStatus,
+          clinicalChange: updatesClinicalStatus,
+        ),
+      );
+    });
+  }
+
+  List<StageNotice> _withNotice(
+    Procedure procedure, {
+    required String previousStatus,
+    required String nextStatus,
+    required bool clinicalChange,
+  }) {
+    final patient = _snapshot.patients.where((item) => item.id == procedure.patientId);
+    if (patient.isEmpty) return procedure.stageNotices;
+    final plan = stageNoticePlan(
+      previousStatus: previousStatus,
+      nextStatus: nextStatus,
+      clinicalChange: clinicalChange,
+      patient: patient.first,
+    );
+    if (plan == null) return procedure.stageNotices;
+    return [
+      ...procedure.stageNotices,
+      StageNotice(
+        id: allocateId('avi'),
+        stageLabel: plan.stageLabel,
+        channels: plan.channels,
+        delivery: NoticeDelivery.aguardando,
+        createdAt: DateTime.now(),
+      ),
+    ];
+  }
+
+  @override
+  void reprocessStageNotice({required String procedureId, required String noticeId}) {
+    _replace(procedureId, (procedure) {
+      return procedure.copyWith(stageNotices: reprocessNotice(procedure.stageNotices, noticeId));
+    });
+  }
+
+  @override
+  void failStageNotice({required String procedureId, required String noticeId}) {
+    _replace(procedureId, (procedure) {
+      return procedure.copyWith(
+        stageNotices: [
+          for (final notice in procedure.stageNotices)
+            if (notice.id == noticeId && notice.delivery == NoticeDelivery.aguardando)
+              notice.copyWith(delivery: NoticeDelivery.falha)
+            else
+              notice,
+        ],
       );
     });
   }

@@ -31,6 +31,10 @@ class MainActivity : FlutterActivity() {
                     }
                     signIn.start(clientId, redirectUri, result)
                 }
+                "currentIdentity" -> {
+                    val clientId = call.argument<String>("clientId").orEmpty()
+                    signIn.currentIdentity(clientId, result)
+                }
                 "signOut" -> {
                     val returnTo = call.argument<String>("redirectUri").orEmpty()
                     if (returnTo.isEmpty()) {

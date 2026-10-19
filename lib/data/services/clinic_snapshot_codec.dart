@@ -19,11 +19,22 @@ Map<String, dynamic> snapshotToJson(ClinicSnapshot snapshot) {
     'profile': {
       'name': snapshot.profile.name,
       'email': snapshot.profile.email,
+      'phone': snapshot.profile.phone,
       'cro': snapshot.profile.cro,
       'reminderEnabled': snapshot.profile.reminderEnabled,
       'reminderDaysBefore': snapshot.profile.reminderDaysBefore,
       'emailChannel': snapshot.profile.emailChannel,
       'pushChannel': snapshot.profile.pushChannel,
+      'locations': [
+        for (final location in snapshot.profile.locations)
+          {
+            'id': location.id,
+            'name': location.name,
+            'address': location.address,
+            'active': location.active,
+            'isDefault': location.isDefault,
+          },
+      ],
     },
     'patients': [
       for (final patient in snapshot.patients)
@@ -31,7 +42,11 @@ Map<String, dynamic> snapshotToJson(ClinicSnapshot snapshot) {
           'id': patient.id,
           'name': patient.name,
           'phone': patient.phone,
+          'email': patient.email,
           'cpf': patient.cpf,
+          'locationIds': patient.locationIds,
+          'notifyByEmail': patient.notifyByEmail,
+          'notifyByPhone': patient.notifyByPhone,
           'birthDate': _date(patient.birthDate),
           'notes': patient.notes,
           'guardian': patient.guardian,
@@ -50,11 +65,22 @@ ClinicSnapshot snapshotFromJson(Map<String, dynamic> json) {
     profile: DentistProfile(
       name: json['profile']?['name'] as String? ?? '',
       email: json['profile']?['email'] as String? ?? '',
+      phone: json['profile']?['phone'] as String? ?? '',
       cro: json['profile']?['cro'] as String? ?? '',
       reminderEnabled: json['profile']?['reminderEnabled'] as bool? ?? true,
       reminderDaysBefore: _reminderDays(json['profile']),
       emailChannel: json['profile']?['emailChannel'] as bool? ?? true,
       pushChannel: json['profile']?['pushChannel'] as bool? ?? true,
+      locations: [
+        for (final location in json['profile']?['locations'] as List<dynamic>? ?? const [])
+          CareLocation(
+            id: location['id'] as String,
+            name: location['name'] as String? ?? '',
+            address: location['address'] as String? ?? '',
+            active: location['active'] as bool? ?? true,
+            isDefault: location['isDefault'] as bool? ?? false,
+          ),
+      ],
     ),
     patients: [
       for (final item in json['patients'] as List<dynamic>? ?? const [])
@@ -62,7 +88,13 @@ ClinicSnapshot snapshotFromJson(Map<String, dynamic> json) {
           id: item['id'] as String,
           name: item['name'] as String,
           phone: item['phone'] as String? ?? '',
+          email: item['email'] as String? ?? '',
           cpf: item['cpf'] as String? ?? '',
+          locationIds: [
+            for (final id in item['locationIds'] as List<dynamic>? ?? const []) id as String,
+          ],
+          notifyByEmail: item['notifyByEmail'] as bool? ?? false,
+          notifyByPhone: item['notifyByPhone'] as bool? ?? false,
           birthDate: _parseDate(item['birthDate'] as String),
           notes: item['notes'] as String? ?? '',
           guardian: item['guardian'] as String? ?? '',
@@ -129,6 +161,16 @@ Map<String, dynamic> _procedureToJson(Procedure procedure) {
           'caption': photo.caption,
           'path': photo.path,
           'visitId': photo.visitId,
+        },
+    ],
+    'stageNotices': [
+      for (final notice in procedure.stageNotices)
+        {
+          'id': notice.id,
+          'stageLabel': notice.stageLabel,
+          'channels': notice.channels,
+          'delivery': notice.delivery.name,
+          'createdAt': _date(notice.createdAt),
         },
     ],
   };
@@ -199,6 +241,18 @@ Procedure _procedureFromJson(Map<String, dynamic> json) {
           caption: photo['caption'] as String? ?? '',
           path: photo['path'] as String? ?? '',
           visitId: photo['visitId'] as String?,
+        ),
+    ],
+    stageNotices: [
+      for (final notice in json['stageNotices'] as List<dynamic>? ?? const [])
+        StageNotice(
+          id: notice['id'] as String,
+          stageLabel: notice['stageLabel'] as String? ?? '',
+          channels: [
+            for (final channel in notice['channels'] as List<dynamic>? ?? const []) channel as String,
+          ],
+          delivery: NoticeDelivery.values.byName(notice['delivery'] as String? ?? 'aguardando'),
+          createdAt: _parseDate(notice['createdAt'] as String),
         ),
     ],
   );

@@ -1,17 +1,24 @@
 import 'models.dart';
+import 'practice.dart';
 
-List<Patient> matchPatients(List<Patient> patients, String query) {
+List<Patient> matchPatients(
+  List<Patient> patients,
+  String query, {
+  LocationFilter location = const LocationFilter.all(),
+}) {
   final text = query.trim().toLowerCase();
   final list = patients.toList()
     ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-  if (text.isEmpty) return list;
-  final digits = digitsOnly(query);
-  return list.where((patient) {
-    final nameHit = patient.name.toLowerCase().contains(text);
-    final cpfHit = formatCpf(patient.cpf).toLowerCase().contains(text) ||
-        (digits.isNotEmpty && digitsOnly(patient.cpf).contains(digits));
-    return nameHit || cpfHit;
-  }).toList();
+  final matched = text.isEmpty
+      ? list
+      : list.where((patient) {
+          final digits = digitsOnly(query);
+          final nameHit = patient.name.toLowerCase().contains(text);
+          final cpfHit = formatCpf(patient.cpf).toLowerCase().contains(text) ||
+              (digits.isNotEmpty && digitsOnly(patient.cpf).contains(digits));
+          return nameHit || cpfHit;
+        }).toList();
+  return filterPatientsByLocation(matched, location);
 }
 
 List<Procedure> proceduresOf(List<Procedure> procedures, String patientId) {

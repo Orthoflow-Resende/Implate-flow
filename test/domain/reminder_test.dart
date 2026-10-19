@@ -100,6 +100,10 @@ void main() {
 
   testWidgets('perfil lembra antes do retorno, com 15 dias selecionados', (tester) async {
     final repository = MockClinicRepository(MockClinicService());
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       MultiProvider(
         providers: [

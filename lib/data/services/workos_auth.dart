@@ -19,6 +19,8 @@ class WorkOsAuthException implements Exception {
 abstract class WorkOsAuth {
   Future<WorkOsIdentity> signIn({required String clientId, required String redirectUri});
 
+  Future<WorkOsIdentity?> currentIdentity({required String clientId});
+
   Future<void> signOut({required String redirectUri});
 }
 
@@ -44,6 +46,27 @@ class NativeWorkOsAuth implements WorkOsAuth {
       return WorkOsIdentity(id: id, email: email, name: name);
     } on PlatformException catch (error) {
       throw WorkOsAuthException(error.message ?? 'Não foi possível concluir o login.');
+    }
+  }
+
+  @override
+  Future<WorkOsIdentity?> currentIdentity({required String clientId}) async {
+    if ((!Platform.isAndroid && !Platform.isIOS) || clientId.isEmpty) return null;
+    try {
+      final result = await _channel.invokeMapMethod<String, String>('currentIdentity', {
+        'clientId': clientId,
+      });
+      final id = result?['id'];
+      final email = result?['email'];
+      final name = result?['name']?.trim();
+      if (id == null || email == null || name == null || id.isEmpty || email.isEmpty || name.isEmpty) {
+        return null;
+      }
+      return WorkOsIdentity(id: id, email: email, name: name);
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
     }
   }
 

@@ -59,6 +59,30 @@ final class WorkOsSignIn: NSObject, ASWebAuthenticationPresentationContextProvid
     }
   }
 
+  func currentIdentity(clientID: String, result: @escaping FlutterResult) {
+    guard let refresh = Keychain.read(key: "refresh_token"), !refresh.isEmpty else {
+      result(nil)
+      return
+    }
+    Task {
+      do {
+        let identity = try await Self.refreshIdentity(clientID: clientID, refreshToken: refresh)
+        try Keychain.save(key: "refresh_token", value: identity.refreshToken)
+        if let sid = self.sessionId(from: identity.accessToken) {
+          try Keychain.save(key: "session_id", value: sid)
+        }
+        await MainActor.run {
+          self.accessToken = identity.accessToken
+          result(["id": identity.id, "email": identity.email, "name": identity.name])
+        }
+      } catch {
+        await MainActor.run {
+          result(nil)
+        }
+      }
+    }
+  }
+
   func signOut(returnTo: String, result: @escaping FlutterResult) {
     session?.cancel()
     session = nil
@@ -125,11 +149,18 @@ final class WorkOsSignIn: NSObject, ASWebAuthenticationPresentationContextProvid
           try Keychain.save(key: "session_id", value: sid)
         }
         let user = authentication.user
-        let combined = [user.firstName, user.lastName].compactMap { $0 }.joined(separator: " ")
-        let name = user.name?.isEmpty == false ? user.name! : (combined.isEmpty ? user.email : combined)
         await MainActor.run {
           self.accessToken = token
-          result(["id": user.id, "email": user.email, "name": name])
+          result([
+            "id": user.id,
+            "email": user.email,
+            "name": Self.registeredName(
+              name: user.name,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email
+            ),
+          ])
         }
       } catch {
         await MainActor.run {
@@ -137,6 +168,57 @@ final class WorkOsSignIn: NSObject, ASWebAuthenticationPresentationContextProvid
         }
       }
     }
+  }
+
+  private static func registeredName(
+    name: String?,
+    firstName: String?,
+    lastName: String?,
+    email: String
+  ) -> String {
+    if let name = name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+      return name
+    }
+    let combined = [firstName, lastName]
+      .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+      .joined(separator: " ")
+    return combined.isEmpty ? email : combined
+  }
+
+  private static func refreshIdentity(clientID: String, refreshToken: String) async throws -> RefreshedIdentity {
+    var request = URLRequest(url: URL(string: "https://api.workos.com/user_management/authenticate")!)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Accept")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try JSONSerialization.data(withJSONObject: [
+      "client_id": clientID,
+      "grant_type": "refresh_token",
+      "refresh_token": refreshToken,
+    ])
+    let (data, response) = try await URLSession.shared.data(for: request)
+    guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+      let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+      let user = json["user"] as? [String: Any],
+      let id = user["id"] as? String, !id.isEmpty,
+      let email = user["email"] as? String, !email.isEmpty,
+      let nextRefresh = json["refresh_token"] as? String, !nextRefresh.isEmpty,
+      let access = json["access_token"] as? String, !access.isEmpty
+    else {
+      throw KeychainError()
+    }
+    return RefreshedIdentity(
+      id: id,
+      email: email,
+      name: registeredName(
+        name: user["name"] as? String,
+        firstName: user["first_name"] as? String,
+        lastName: user["last_name"] as? String,
+        email: email
+      ),
+      refreshToken: nextRefresh,
+      accessToken: access
+    )
   }
 
   private func sessionId(from accessToken: String?) -> String? {
@@ -201,3 +283,11 @@ private enum Keychain {
 }
 
 private struct KeychainError: Error {}
+
+private struct RefreshedIdentity {
+  let id: String
+  let email: String
+  let name: String
+  let refreshToken: String
+  let accessToken: String
+}

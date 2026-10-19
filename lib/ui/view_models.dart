@@ -10,6 +10,7 @@ import '../data/services/clinic_pdfs.dart';
 import '../data/services/workos_auth.dart';
 import '../domain/clinic_snapshot.dart';
 import '../domain/models.dart';
+import '../domain/practice.dart';
 import '../domain/queries.dart';
 
 class RepositoryViewModel extends ChangeNotifier {
@@ -37,7 +38,9 @@ class RepositoryViewModel extends ChangeNotifier {
 }
 
 class SessionViewModel extends RepositoryViewModel {
-  SessionViewModel(super.repository, this.auth);
+  SessionViewModel(super.repository, this.auth) {
+    unawaited(syncWorkOsName());
+  }
 
   final WorkOsAuth auth;
   bool busy = false;
@@ -66,6 +69,18 @@ class SessionViewModel extends RepositoryViewModel {
     } finally {
       busy = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> syncWorkOsName() async {
+    if (!snapshot.signedIn || AppConfig.workOsClientId.isEmpty) return;
+    try {
+      final identity = await auth.currentIdentity(clientId: AppConfig.workOsClientId);
+      if (identity == null) return;
+      if (identity.name == snapshot.profile.name && identity.email == snapshot.profile.email) return;
+      repository.signIn(name: identity.name, email: identity.email);
+    } on WorkOsAuthException {
+      // The stored profile stays until the next successful WorkOS refresh.
     }
   }
 
@@ -126,15 +141,18 @@ class HomeViewModel extends RepositoryViewModel {
   Patient patientOf(String patientId) =>
       snapshot.patients.firstWhere((patient) => patient.id == patientId);
 
-  List<Patient> patientsMatching(String query) => matchPatients(snapshot.patients, query);
+  List<Patient> patientsMatching(String query, {LocationFilter location = const LocationFilter.all()}) =>
+      matchPatients(snapshot.patients, query, location: location);
 }
 
 class PatientsViewModel extends RepositoryViewModel {
   PatientsViewModel(super.repository);
 
   String query = '';
+  LocationFilter locationFilter = const LocationFilter.all();
 
-  List<Patient> get patients => matchPatients(snapshot.patients, query);
+  List<Patient> get patients =>
+      matchPatients(snapshot.patients, query, location: locationFilter);
 
   int implantCount(String patientId) => implantsOf(snapshot.procedures, patientId).length;
 
@@ -143,21 +161,34 @@ class PatientsViewModel extends RepositoryViewModel {
     notifyListeners();
   }
 
+  void setLocationFilter(LocationFilter value) {
+    locationFilter = value;
+    notifyListeners();
+  }
+
   Patient createPatient({
     required String name,
     required String phone,
+    String email = '',
     String cpf = '',
     required DateTime birthDate,
     String notes = '',
     String guardian = '',
+    List<String> locationIds = const [],
+    bool notifyByEmail = false,
+    bool notifyByPhone = false,
   }) {
     return repository.createPatient(
       name: name,
       phone: phone,
+      email: email,
       cpf: cpf,
       birthDate: birthDate,
       notes: notes,
       guardian: guardian,
+      locationIds: locationIds,
+      notifyByEmail: notifyByEmail,
+      notifyByPhone: notifyByPhone,
     );
   }
 }
@@ -462,6 +493,9 @@ class ProcedureViewModel extends RepositoryViewModel {
     repository.updateProcedure(procedure.copyWith(notes: notes));
   }
 
+  void reprocessNotice(String noticeId) =>
+      repository.reprocessStageNotice(procedureId: procedureId, noticeId: noticeId);
+
   void saveTraceability({
     required List<ToothSite> sites,
     required bool sinusLift,
@@ -510,7 +544,58 @@ class ProfileViewModel extends RepositoryViewModel {
 
   DentistProfile get profile => snapshot.profile;
 
+  void setPhone(String value) =>
+      repository.updateProfile(profile.copyWith(phone: formatBrazilianPhone(value)));
+
   void setCro(String value) => repository.updateProfile(profile.copyWith(cro: value));
+
+  void addLocation({required String name, String address = ''}) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+    repository.updateProfile(
+      profile.copyWith(
+        locations: addCareLocation(
+          profile.locations,
+          CareLocation(id: repository.allocateId('loc'), name: trimmed, address: address.trim()),
+        ),
+      ),
+    );
+  }
+
+  void editLocation({required String id, required String name, String address = ''}) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+    final current = profile.locations.where((location) => location.id == id);
+    if (current.isEmpty) return;
+    repository.updateProfile(
+      profile.copyWith(
+        locations: updateCareLocation(
+          profile.locations,
+          current.first.copyWith(name: trimmed, address: address.trim()),
+        ),
+      ),
+    );
+  }
+
+  void makeDefaultLocation(String id) {
+    repository.updateProfile(
+      profile.copyWith(locations: setDefaultCareLocation(profile.locations, id)),
+    );
+  }
+
+  void inactivateLocation(String id, {String? replacementId}) {
+    repository.updateProfile(
+      profile.copyWith(
+        locations: inactivateCareLocation(profile.locations, id, replacementId: replacementId),
+      ),
+    );
+  }
+
+  void reactivateLocation(String id) {
+    repository.updateProfile(
+      profile.copyWith(locations: reactivateCareLocation(profile.locations, id)),
+    );
+  }
 
   void setReminderEnabled(bool value) =>
       repository.updateProfile(profile.copyWith(reminderEnabled: value));

@@ -141,6 +141,45 @@ class WorkOsSignIn(
         fail("Login cancelado.")
     }
 
+    fun currentIdentity(clientId: String, result: MethodChannel.Result) {
+        if (clientId.isEmpty()) {
+            result.success(null)
+            return
+        }
+        val refresh = preferences().getString(KEY_REFRESH, null)
+        if (refresh.isNullOrEmpty()) {
+            result.success(null)
+            return
+        }
+        scope.launch {
+            try {
+                val identity = withContext(Dispatchers.IO) {
+                    refreshIdentity(clientId = clientId, refreshToken = refresh)
+                }
+                try {
+                    preferences().edit()
+                        .apply {
+                            identity.refreshToken?.let { putString(KEY_REFRESH, it) }
+                            identity.sessionId?.let { putString(KEY_SESSION, it) }
+                        }
+                        .apply()
+                } catch (error: Exception) {
+                    Log.e(TAG, "Could not store WorkOS session", error)
+                }
+                result.success(
+                    hashMapOf(
+                        "id" to identity.id,
+                        "email" to identity.email,
+                        "name" to identity.name,
+                    ),
+                )
+            } catch (error: Exception) {
+                Log.w(TAG, "Could not refresh the WorkOS profile", error)
+                result.success(null)
+            }
+        }
+    }
+
     fun signOut(returnTo: String, result: MethodChannel.Result) {
         if (waiter != null) {
             result.error("busy", "Já existe um login em andamento.", null)
@@ -210,13 +249,26 @@ class WorkOsSignIn(
         }
     }
 
+    private fun refreshIdentity(clientId: String, refreshToken: String): WorkOsIdentity {
+        return authenticate(
+            JSONObject()
+                .put("client_id", clientId)
+                .put("grant_type", "refresh_token")
+                .put("refresh_token", refreshToken),
+        )
+    }
+
     private fun exchangeCode(clientId: String, code: String, codeVerifier: String): WorkOsIdentity {
-        val body = JSONObject()
-            .put("client_id", clientId)
-            .put("grant_type", "authorization_code")
-            .put("code", code)
-            .put("code_verifier", codeVerifier)
-            .toString()
+        return authenticate(
+            JSONObject()
+                .put("client_id", clientId)
+                .put("grant_type", "authorization_code")
+                .put("code", code)
+                .put("code_verifier", codeVerifier),
+        )
+    }
+
+    private fun authenticate(body: JSONObject): WorkOsIdentity {
         val connection = (URL(AUTHENTICATE_URL).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 30_000
@@ -227,7 +279,7 @@ class WorkOsSignIn(
         }
         try {
             connection.outputStream.use { output ->
-                output.write(body.toByteArray(Charsets.UTF_8))
+                output.write(body.toString().toByteArray(Charsets.UTF_8))
             }
             val status = connection.responseCode
             val payload = (if (status in 200..299) connection.inputStream else connection.errorStream)
@@ -240,16 +292,10 @@ class WorkOsSignIn(
             val json = JSONObject(payload)
             val user = json.getJSONObject("user")
             val email = user.getString("email")
-            val combined = listOf("first_name", "last_name")
-                .map { user.optString(it) }
-                .filter { it.isNotBlank() }
-                .joinToString(" ")
-            val name = user.optString("name").takeIf { it.isNotBlank() }
-                ?: combined.ifBlank { email }
             return WorkOsIdentity(
                 id = user.getString("id"),
                 email = email,
-                name = name,
+                name = registeredName(user, email),
                 refreshToken = json.optString("refresh_token").takeIf { it.isNotBlank() },
                 sessionId = sessionIdFrom(json.optString("access_token")),
             )
@@ -267,6 +313,16 @@ class WorkOsSignIn(
         private const val KEY_STATE = "state"
         private const val KEY_REFRESH = "refresh_token"
         private const val KEY_SESSION = "session_id"
+
+        private fun registeredName(user: JSONObject, email: String): String {
+            val full = user.optString("name").trim()
+            if (full.isNotEmpty()) return full
+            val combined = listOf("first_name", "last_name")
+                .map { user.optString(it).trim() }
+                .filter { it.isNotEmpty() }
+                .joinToString(" ")
+            return combined.ifEmpty { email }
+        }
 
         private fun sessionIdFrom(accessToken: String): String? {
             if (accessToken.isBlank()) return null

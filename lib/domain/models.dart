@@ -404,42 +404,81 @@ const reminderLeadDayOptions = <int>[7, 15, 30];
 int normalizeReminderDaysBefore(int days) =>
     days < 1 ? defaultReminderDaysBefore : days;
 
+class CareLocation {
+  const CareLocation({
+    required this.id,
+    required this.name,
+    this.address = '',
+    this.active = true,
+    this.isDefault = false,
+  });
+
+  final String id;
+  final String name;
+  final String address;
+  final bool active;
+  final bool isDefault;
+
+  CareLocation copyWith({
+    String? name,
+    String? address,
+    bool? active,
+    bool? isDefault,
+  }) {
+    return CareLocation(
+      id: id,
+      name: name ?? this.name,
+      address: address ?? this.address,
+      active: active ?? this.active,
+      isDefault: isDefault ?? this.isDefault,
+    );
+  }
+}
+
 class DentistProfile {
   const DentistProfile({
     required this.name,
     required this.email,
+    this.phone = '',
     this.cro = '',
     this.reminderEnabled = true,
     this.reminderDaysBefore = defaultReminderDaysBefore,
     this.emailChannel = true,
     this.pushChannel = true,
+    this.locations = const [],
   });
 
   final String name;
   final String email;
+  final String phone;
   final String cro;
   final bool reminderEnabled;
   final int reminderDaysBefore;
   final bool emailChannel;
   final bool pushChannel;
+  final List<CareLocation> locations;
 
   DentistProfile copyWith({
     String? name,
     String? email,
+    String? phone,
     String? cro,
     bool? reminderEnabled,
     int? reminderDaysBefore,
     bool? emailChannel,
     bool? pushChannel,
+    List<CareLocation>? locations,
   }) {
     return DentistProfile(
       name: name ?? this.name,
       email: email ?? this.email,
+      phone: phone ?? this.phone,
       cro: cro ?? this.cro,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
       reminderDaysBefore: reminderDaysBefore ?? this.reminderDaysBefore,
       emailChannel: emailChannel ?? this.emailChannel,
       pushChannel: pushChannel ?? this.pushChannel,
+      locations: locations ?? this.locations,
     );
   }
 }
@@ -450,18 +489,26 @@ class Patient {
     required this.name,
     required this.phone,
     required this.birthDate,
+    this.email = '',
     this.cpf = '',
     this.notes = '',
     this.guardian = '',
+    this.locationIds = const [],
+    this.notifyByEmail = false,
+    this.notifyByPhone = false,
   });
 
   final String id;
   final String name;
   final String phone;
+  final String email;
   final String cpf;
   final DateTime birthDate;
   final String notes;
   final String guardian;
+  final List<String> locationIds;
+  final bool notifyByEmail;
+  final bool notifyByPhone;
 
   bool get isMinor {
     final today = DateTime.now();
@@ -474,19 +521,55 @@ class Patient {
   Patient copyWith({
     String? name,
     String? phone,
+    String? email,
     String? cpf,
     DateTime? birthDate,
     String? notes,
     String? guardian,
+    List<String>? locationIds,
+    bool? notifyByEmail,
+    bool? notifyByPhone,
   }) {
     return Patient(
       id: id,
       name: name ?? this.name,
       phone: phone ?? this.phone,
+      email: email ?? this.email,
       cpf: cpf ?? this.cpf,
       birthDate: birthDate ?? this.birthDate,
       notes: notes ?? this.notes,
       guardian: guardian ?? this.guardian,
+      locationIds: locationIds ?? this.locationIds,
+      notifyByEmail: notifyByEmail ?? this.notifyByEmail,
+      notifyByPhone: notifyByPhone ?? this.notifyByPhone,
+    );
+  }
+}
+
+enum NoticeDelivery { aguardando, falha, revogada }
+
+class StageNotice {
+  const StageNotice({
+    required this.id,
+    required this.stageLabel,
+    required this.channels,
+    required this.delivery,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String stageLabel;
+  final List<String> channels;
+  final NoticeDelivery delivery;
+  final DateTime createdAt;
+
+  StageNotice copyWith({NoticeDelivery? delivery, List<String>? channels}) {
+    return StageNotice(
+      id: id,
+      stageLabel: stageLabel,
+      channels: channels ?? this.channels,
+      delivery: delivery ?? this.delivery,
+      createdAt: createdAt,
     );
   }
 }
@@ -666,11 +749,13 @@ class Procedure {
     List<Visit>? visits,
     List<FollowUp>? followUps,
     List<ClinicPhoto>? photos,
+    List<StageNotice>? stageNotices,
     this.certificateIssuedAt,
     this.certificatePdfPath,
   })  : visits = visits ?? [],
         followUps = followUps ?? [],
         photos = photos ?? [],
+        stageNotices = stageNotices ?? [],
         linkedProcedureIds = linkedProcedureIds ?? const [];
 
   final String id;
@@ -690,6 +775,7 @@ class Procedure {
   final List<Visit> visits;
   final List<FollowUp> followUps;
   final List<ClinicPhoto> photos;
+  final List<StageNotice> stageNotices;
   final DateTime? certificateIssuedAt;
   final String? certificatePdfPath;
 
@@ -705,6 +791,7 @@ class Procedure {
     bool? sinusLift,
     SinusLiftTechnique? sinusLiftTechnique,
     String? sinusLiftNote,
+    List<StageNotice>? stageNotices,
   }) {
     final lift = sinusLift ?? this.sinusLift;
     return Procedure(
@@ -725,6 +812,7 @@ class Procedure {
       visits: visits ?? this.visits,
       followUps: followUps ?? this.followUps,
       photos: photos ?? this.photos,
+      stageNotices: stageNotices ?? this.stageNotices,
       certificateIssuedAt: certificateIssuedAt ?? this.certificateIssuedAt,
       certificatePdfPath: certificatePdfPath ?? this.certificatePdfPath,
     );
@@ -782,6 +870,41 @@ class CalendarMark {
 }
 
 String digitsOnly(String value) => value.replaceAll(RegExp(r'\D'), '');
+
+String formatBrazilianPhone(String value) {
+  final raw = digitsOnly(value);
+  final digits = raw.length > 11 ? raw.substring(0, 11) : raw;
+  if (digits.isEmpty) return '';
+  if (digits.length <= 2) return '($digits';
+  final area = digits.substring(0, 2);
+  final rest = digits.substring(2);
+  if (digits.length <= 6) return '($area) $rest';
+  if (digits.length <= 10) {
+    return '($area) ${rest.substring(0, 4)}-${rest.substring(4)}';
+  }
+  return '($area) ${rest.substring(0, 5)}-${rest.substring(5)}';
+}
+
+bool isValidBrazilianPhone(String value) {
+  final length = digitsOnly(value).length;
+  return length == 10 || length == 11;
+}
+
+bool isValidEmail(String value) {
+  return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value.trim());
+}
+
+String? brazilianPhoneIssue(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty || isValidBrazilianPhone(trimmed)) return null;
+  return 'Informe DDD e número, com 10 ou 11 dígitos.';
+}
+
+String? emailIssue(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty || isValidEmail(trimmed)) return null;
+  return 'Informe um e-mail válido.';
+}
 
 String formatCpf(String value) {
   final digits = digitsOnly(value);

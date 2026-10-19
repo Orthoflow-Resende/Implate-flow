@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/models.dart';
+import '../../domain/practice.dart';
+import '../core/filter_menu.dart';
 import '../core/layout.dart';
 import '../view_models.dart';
 import 'patient_editor.dart';
@@ -15,7 +17,16 @@ class PatientsScreen extends StatelessWidget {
     final viewModel = context.watch<PatientsViewModel>();
     final patients = viewModel.patients;
     return Scaffold(
-      appBar: AppBar(title: const Text('Pacientes')),
+      appBar: AppBar(
+        title: const Text('Pacientes'),
+        actions: [
+          FilterMenuButton(
+            groups: _locationGroups(viewModel),
+            activeCount: viewModel.locationFilter.isAll ? 0 : 1,
+            onClear: () => viewModel.setLocationFilter(const LocationFilter.all()),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'patients-new',
         onPressed: () => _create(context, viewModel),
@@ -38,9 +49,9 @@ class PatientsScreen extends StatelessWidget {
             child: patients.isEmpty
                 ? Center(
                     child: AppEmptyHint(
-                      viewModel.query.trim().isEmpty
+                      viewModel.query.trim().isEmpty && viewModel.locationFilter.isAll
                           ? 'Nenhum paciente cadastrado.'
-                          : 'Nenhum paciente com esse nome ou CPF.',
+                          : 'Nenhum paciente com esses filtros.',
                     ),
                   )
                 : ListView.separated(
@@ -70,16 +81,51 @@ class PatientsScreen extends StatelessWidget {
   }
 
   Future<void> _create(BuildContext context, PatientsViewModel viewModel) async {
-    final draft = await editPatientDraft(context, title: 'Novo paciente');
+    final draft = await editPatientDraft(
+      context,
+      title: 'Novo paciente',
+      locations: viewModel.snapshot.profile.locations,
+    );
     if (draft == null || !context.mounted) return;
     final patient = viewModel.createPatient(
       name: draft.name,
       phone: draft.phone,
+      email: draft.email,
       cpf: draft.cpf,
       birthDate: draft.birthDate,
       notes: draft.notes,
       guardian: draft.guardian,
+      locationIds: draft.locationIds,
+      notifyByEmail: draft.notifyByEmail,
+      notifyByPhone: draft.notifyByPhone,
     );
     if (context.mounted) await context.push('/patients/${patient.id}');
   }
+}
+
+List<FilterMenuGroup> _locationGroups(PatientsViewModel viewModel) {
+  final selected = viewModel.locationFilter;
+  return [
+    FilterMenuGroup(
+      title: 'Local de atendimento',
+      options: [
+        FilterMenuOption(
+          label: 'Todos os locais',
+          selected: selected.isAll,
+          onSelected: () => viewModel.setLocationFilter(const LocationFilter.all()),
+        ),
+        for (final location in activeCareLocations(viewModel.snapshot.profile.locations))
+          FilterMenuOption(
+            label: location.name,
+            selected: selected.locationId == location.id,
+            onSelected: () => viewModel.setLocationFilter(LocationFilter.place(location.id)),
+          ),
+        FilterMenuOption(
+          label: 'Sem local',
+          selected: selected.withoutLocation,
+          onSelected: () => viewModel.setLocationFilter(const LocationFilter.none()),
+        ),
+      ],
+    ),
+  ];
 }

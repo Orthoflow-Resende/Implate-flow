@@ -17,10 +17,14 @@ abstract class ClinicRepository {
   Patient createPatient({
     required String name,
     required String phone,
+    String email = '',
     String cpf = '',
     required DateTime birthDate,
     String notes = '',
     String guardian = '',
+    List<String> locationIds = const [],
+    bool notifyByEmail = false,
+    bool notifyByPhone = false,
   });
 
   void updatePatient(Patient patient);
@@ -45,6 +49,10 @@ abstract class ClinicRepository {
   });
 
   void issueCertificate(String procedureId, {String? pdfPath});
+
+  void reprocessStageNotice({required String procedureId, required String noticeId});
+
+  void failStageNotice({required String procedureId, required String noticeId});
 
   void updateProfile(DentistProfile profile);
 

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/models.dart';
+import '../../domain/practice.dart';
 import '../core/layout.dart';
 import '../view_models.dart';
 import 'patient_editor.dart';
@@ -57,6 +58,9 @@ class PatientScreen extends StatelessWidget {
                 Text(patient.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 Text(patient.phone.isEmpty ? 'Sem telefone' : patient.phone),
+                Text(patient.email.isEmpty ? 'Sem e-mail' : patient.email),
+                Text(_locationLine(patient, viewModel.snapshot.profile.locations)),
+                Text(_noticeLine(patient)),
                 Text(cpfLabel(patient.cpf)),
                 Text('Nascimento ${formatDay(patient.birthDate)}'),
                 if (patient.isMinor && patient.guardian.isNotEmpty)
@@ -142,13 +146,18 @@ class PatientScreen extends StatelessWidget {
     final draft = await editPatientDraft(
       context,
       title: 'Editar paciente',
+      locations: viewModel.snapshot.profile.locations,
       initial: PatientDraft(
         name: patient.name,
         phone: patient.phone,
+        email: patient.email,
         cpf: patient.cpf,
         birthDate: patient.birthDate,
         notes: patient.notes,
         guardian: patient.guardian,
+        locationIds: patient.locationIds,
+        notifyByEmail: patient.notifyByEmail,
+        notifyByPhone: patient.notifyByPhone,
       ),
     );
     if (draft == null) return;
@@ -156,11 +165,30 @@ class PatientScreen extends StatelessWidget {
       patient.copyWith(
         name: draft.name.trim(),
         phone: draft.phone.trim(),
+        email: draft.email,
         cpf: draft.cpf,
         birthDate: draft.birthDate,
         notes: draft.notes.trim(),
         guardian: draft.guardian.trim(),
+        locationIds: draft.locationIds,
+        notifyByEmail: draft.notifyByEmail,
+        notifyByPhone: draft.notifyByPhone,
       ),
     );
   }
+}
+
+String _locationLine(Patient patient, List<CareLocation> locations) {
+  final names = [
+    for (final location in locations)
+      if (patient.locationIds.contains(location.id)) location.name,
+  ];
+  if (names.isEmpty) return 'Sem local de atendimento';
+  return names.join(', ');
+}
+
+String _noticeLine(Patient patient) {
+  final channels = enabledNoticeChannels(patient);
+  if (channels.isEmpty) return 'Sem aviso de etapa ao paciente';
+  return 'Avisa etapas por ${channels.join(' e ')}';
 }

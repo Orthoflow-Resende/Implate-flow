@@ -31,6 +31,15 @@ import UIKit
           return
         }
         self?.workOs.signIn(clientID: clientId, redirectURI: redirectUri, result: result)
+      case "currentIdentity":
+        guard let args = call.arguments as? [String: String],
+          let clientId = args["clientId"],
+          !clientId.isEmpty
+        else {
+          result(nil)
+          return
+        }
+        self?.workOs.currentIdentity(clientID: clientId, result: result)
       case "signOut":
         let returnTo = (call.arguments as? [String: String])?["redirectUri"]
           ?? "br.com.implateflow://auth/callback"
