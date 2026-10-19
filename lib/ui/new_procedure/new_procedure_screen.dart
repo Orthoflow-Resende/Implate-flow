@@ -285,7 +285,7 @@ class _ToothCard extends StatelessWidget {
       draft.model,
     ].where((part) => part.isNotEmpty).join(' ');
     return AppCollapseCard(
-      title: 'Dente $tooth',
+      title: modality == Modality.protocolo ? 'Região $tooth' : 'Dente $tooth',
       subtitle: pieceLine.isEmpty ? 'Rastreio opcional' : pieceLine,
       initiallyExpanded: expanded,
       child: Column(
@@ -452,11 +452,10 @@ class _GraftFields extends StatelessWidget {
       children: [
         for (var index = 0; index < draft.grafts.length; index++) ...[
           const SizedBox(height: 8),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-            ),
+          Material(
+            color: scheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
