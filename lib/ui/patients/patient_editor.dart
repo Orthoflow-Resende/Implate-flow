@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/models.dart';
 import '../../domain/practice.dart';
 import '../core/brazilian_phone_field.dart';
+import '../core/cpf_field.dart';
 import '../core/layout.dart';
 
 class PatientDraft {
@@ -75,7 +76,7 @@ class PatientEditorPage extends StatefulWidget {
 class _PatientEditorPageState extends State<PatientEditorPage> {
   late final TextEditingController name;
   late final TextEditingController email;
-  late final TextEditingController cpf;
+  late String cpf;
   late final TextEditingController guardian;
   late DateTime birth;
   late String phone;
@@ -90,7 +91,7 @@ class _PatientEditorPageState extends State<PatientEditorPage> {
     name = TextEditingController(text: initial?.name ?? '');
     email = TextEditingController(text: initial?.email ?? '');
     phone = initial?.phone ?? '';
-    cpf = TextEditingController(text: initial?.cpf ?? '');
+    cpf = initial?.cpf ?? '';
     guardian = TextEditingController(text: initial?.guardian ?? '');
     birth = initial?.birthDate ?? DateTime(1980, 1, 1);
     notifyByEmail = initial?.notifyByEmail ?? false;
@@ -107,7 +108,6 @@ class _PatientEditorPageState extends State<PatientEditorPage> {
   void dispose() {
     name.dispose();
     email.dispose();
-    cpf.dispose();
     guardian.dispose();
     super.dispose();
   }
@@ -120,6 +120,7 @@ class _PatientEditorPageState extends State<PatientEditorPage> {
     return name.text.trim().isNotEmpty &&
         emailIssue(email.text) == null &&
         brazilianPhoneIssue(phone) == null &&
+        cpfIssue(cpf) == null &&
         (!minor || guardian.text.trim().isNotEmpty);
   }
 
@@ -128,9 +129,9 @@ class _PatientEditorPageState extends State<PatientEditorPage> {
       context,
       PatientDraft(
         name: name.text,
-        phone: phone,
+        phone: digitsOnly(phone),
         email: email.text.trim(),
-        cpf: formatCpf(cpf.text),
+        cpf: digitsOnly(cpf),
         birthDate: birth,
         notes: widget.initial?.notes ?? '',
         guardian: _minor(birth) ? guardian.text : '',
@@ -231,13 +232,9 @@ class _PatientEditorPageState extends State<PatientEditorPage> {
                   ),
                 ],
                 const SizedBox(height: 20),
-                TextField(
-                  controller: cpf,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'CPF',
-                    helperText: 'Usado na busca da lista',
-                  ),
+                CpfField(
+                  initial: cpf,
+                  onChanged: (value) => setState(() => cpf = value),
                 ),
                 const SizedBox(height: 20),
                 AppSurfaceCard(

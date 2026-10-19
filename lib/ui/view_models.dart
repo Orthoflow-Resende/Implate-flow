@@ -544,8 +544,12 @@ class ProfileViewModel extends RepositoryViewModel {
 
   DentistProfile get profile => snapshot.profile;
 
-  void setPhone(String value) =>
-      repository.updateProfile(profile.copyWith(phone: formatBrazilianPhone(value)));
+  void setPhone(String value) {
+    if (brazilianPhoneIssue(value) != null) return;
+    final digits = digitsOnly(value);
+    if (digits == digitsOnly(profile.phone)) return;
+    repository.updateProfile(profile.copyWith(phone: digits));
+  }
 
   void setCro(String value) => repository.updateProfile(profile.copyWith(cro: value));
 

@@ -74,7 +74,7 @@ Future<Uint8List> buildPatientChartPdf({
         pw.SizedBox(height: 12),
         pw.Text(patient.name),
         pw.Text(cpfLabel(patient.cpf)),
-        pw.Text(patient.phone.isEmpty ? 'Sem telefone' : patient.phone),
+        pw.Text(patient.phone.isEmpty ? 'Sem telefone' : formatBrazilianPhone(patient.phone)),
         pw.Text('Nascimento ${formatDay(patient.birthDate)}'),
         if (patient.isMinor && patient.guardian.isNotEmpty)
           pw.Text('Responsável legal: ${patient.guardian}'),

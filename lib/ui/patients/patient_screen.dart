@@ -57,7 +57,7 @@ class PatientScreen extends StatelessWidget {
               children: [
                 Text(patient.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                Text(patient.phone.isEmpty ? 'Sem telefone' : patient.phone),
+                Text(patient.phone.isEmpty ? 'Sem telefone' : formatBrazilianPhone(patient.phone)),
                 Text(patient.email.isEmpty ? 'Sem e-mail' : patient.email),
                 Text(_locationLine(patient, viewModel.snapshot.profile.locations)),
                 Text(_noticeLine(patient)),

@@ -109,7 +109,7 @@ class MockClinicRepository implements ClinicRepository {
         name: name.trim(),
         phone: phone,
         email: email,
-        cpf: formatCpf(cpf),
+        cpf: cpf,
         birthDate: birthDate,
         notes: notes.trim(),
         guardian: guardian.trim(),

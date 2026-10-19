@@ -108,10 +108,14 @@ List<Patient> filterPatientsByLocation(List<Patient> patients, LocationFilter fi
 
 Patient normalizePatientContacts(Patient patient) {
   final email = patient.email.trim();
-  final phone = formatBrazilianPhone(patient.phone);
+  final phoneDigits = brazilianPhoneDigits(patient.phone);
+  final cpfDigits = digitsOnly(patient.cpf);
+  final phone = isValidBrazilianPhone(phoneDigits) ? phoneDigits : '';
+  final cpf = cpfDigits.isEmpty || isValidCpf(cpfDigits) ? cpfDigits : '';
   return patient.copyWith(
     email: email,
     phone: phone,
+    cpf: cpf,
     notifyByEmail: patient.notifyByEmail && isValidEmail(email),
     notifyByPhone: patient.notifyByPhone && isValidBrazilianPhone(phone),
   );

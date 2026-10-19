@@ -871,9 +871,29 @@ class CalendarMark {
 
 String digitsOnly(String value) => value.replaceAll(RegExp(r'\D'), '');
 
+const validBrazilianAreaCodes = {
+  '11', '12', '13', '14', '15', '16', '17', '18', '19',
+  '21', '22', '24', '27', '28',
+  '31', '32', '33', '34', '35', '37', '38',
+  '41', '42', '43', '44', '45', '46', '47', '48', '49',
+  '51', '53', '54', '55',
+  '61', '62', '63', '64', '65', '66', '67', '68', '69',
+  '71', '73', '74', '75', '77', '79',
+  '81', '82', '83', '84', '85', '86', '87', '88', '89',
+  '91', '92', '93', '94', '95', '96', '97', '98', '99',
+};
+
+String brazilianPhoneDigits(String value) {
+  var digits = digitsOnly(value);
+  if (digits.startsWith('55') && (digits.length == 12 || digits.length == 13)) {
+    digits = digits.substring(2);
+  }
+  if (digits.length > 11) digits = digits.substring(0, 11);
+  return digits;
+}
+
 String formatBrazilianPhone(String value) {
-  final raw = digitsOnly(value);
-  final digits = raw.length > 11 ? raw.substring(0, 11) : raw;
+  final digits = brazilianPhoneDigits(value);
   if (digits.isEmpty) return '';
   if (digits.length <= 2) return '($digits';
   final area = digits.substring(0, 2);
@@ -886,8 +906,9 @@ String formatBrazilianPhone(String value) {
 }
 
 bool isValidBrazilianPhone(String value) {
-  final length = digitsOnly(value).length;
-  return length == 10 || length == 11;
+  final digits = brazilianPhoneDigits(value);
+  if (digits.length != 10 && digits.length != 11) return false;
+  return validBrazilianAreaCodes.contains(digits.substring(0, 2));
 }
 
 bool isValidEmail(String value) {
@@ -895,9 +916,15 @@ bool isValidEmail(String value) {
 }
 
 String? brazilianPhoneIssue(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty || isValidBrazilianPhone(trimmed)) return null;
-  return 'Informe DDD e número, com 10 ou 11 dígitos.';
+  final digits = brazilianPhoneDigits(value);
+  if (digits.isEmpty) return null;
+  if (digits.length != 10 && digits.length != 11) {
+    return 'Informe DDD e número, com 10 ou 11 dígitos.';
+  }
+  if (!validBrazilianAreaCodes.contains(digits.substring(0, 2))) {
+    return 'Informe um DDD válido.';
+  }
+  return null;
 }
 
 String? emailIssue(String value) {
@@ -907,9 +934,73 @@ String? emailIssue(String value) {
 }
 
 String formatCpf(String value) {
-  final digits = digitsOnly(value);
-  if (digits.length != 11) return value.trim();
+  final raw = digitsOnly(value);
+  final digits = raw.length > 11 ? raw.substring(0, 11) : raw;
+  if (digits.isEmpty) return '';
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return '${digits.substring(0, 3)}.${digits.substring(3)}';
+  if (digits.length <= 9) return '${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6)}';
   return '${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9)}';
+}
+
+bool isValidCpf(String value) {
+  final digits = digitsOnly(value);
+  if (digits.length != 11) return false;
+  if (RegExp(r'^(\d)\1{10}$').hasMatch(digits)) return false;
+  int verifier(int length) {
+    var sum = 0;
+    for (var index = 0; index < length; index++) {
+      sum += int.parse(digits[index]) * (length + 1 - index);
+    }
+    final remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  }
+
+  return verifier(9) == int.parse(digits[9]) && verifier(10) == int.parse(digits[10]);
+}
+
+String? cpfIssue(String value) {
+  final digits = digitsOnly(value);
+  if (digits.isEmpty) return null;
+  if (!isValidCpf(digits)) return 'Informe um CPF válido.';
+  return null;
+}
+
+class MaskedDigits {
+  const MaskedDigits(this.text, this.offset);
+
+  final String text;
+  final int offset;
+}
+
+MaskedDigits applyDigitMask({
+  required String previous,
+  required String incoming,
+  required int cursor,
+  required String Function(String value) format,
+}) {
+  final bounded = cursor.clamp(0, incoming.length);
+  var digits = digitsOnly(incoming);
+  var digitsBefore = digitsOnly(incoming.substring(0, bounded)).length;
+  if (digits == digitsOnly(previous) && incoming.length < previous.length && digitsBefore > 0) {
+    digits = digits.substring(0, digitsBefore - 1) + digits.substring(digitsBefore);
+    digitsBefore -= 1;
+  }
+  final text = format(digits);
+  return MaskedDigits(text, offsetAfterDigits(text, digitsBefore));
+}
+
+int offsetAfterDigits(String text, int count) {
+  if (count <= 0) return 0;
+  var seen = 0;
+  for (var index = 0; index < text.length; index++) {
+    final unit = text.codeUnitAt(index);
+    if (unit >= 48 && unit <= 57) {
+      seen++;
+      if (seen == count) return index + 1;
+    }
+  }
+  return text.length;
 }
 
 String cpfLabel(String value) {

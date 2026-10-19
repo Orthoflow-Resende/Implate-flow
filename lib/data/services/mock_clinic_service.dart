@@ -20,9 +20,9 @@ ClinicSnapshot buildDemoSnapshot() {
     final maria = Patient(
       id: nextId('pac'),
       name: 'Maria Souza',
-      phone: '(11) 98888-1001',
+      phone: '11988881001',
       email: 'maria@exemplo.com',
-      cpf: '390.533.447-05',
+      cpf: '39053344705',
       birthDate: DateTime(1978, 4, 12),
       locationIds: [centro],
       notifyByEmail: true,
@@ -30,22 +30,22 @@ ClinicSnapshot buildDemoSnapshot() {
     final joao = Patient(
       id: nextId('pac'),
       name: 'João Lima',
-      phone: '(11) 97777-2002',
-      cpf: '529.982.247-25',
+      phone: '11977772002',
+      cpf: '52998224725',
       birthDate: DateTime(1965, 9, 3),
     );
     final ana = Patient(
       id: nextId('pac'),
       name: 'Ana Costa',
-      phone: '(21) 96666-3003',
-      cpf: '153.509.460-56',
+      phone: '21966663003',
+      cpf: '15350946056',
       birthDate: DateTime(1984, 1, 28),
     );
     final pedro = Patient(
       id: nextId('pac'),
       name: 'Pedro Alves',
-      phone: '(31) 95555-4004',
-      cpf: '111.444.777-35',
+      phone: '31955554004',
+      cpf: '11144477735',
       birthDate: DateTime(2014, 7, 19),
       guardian: 'Lucia Alves',
     );
@@ -290,7 +290,7 @@ ClinicSnapshot buildDemoSnapshot() {
     profile: DentistProfile(
       name: 'Dra. Helena Vargas',
       email: 'helena@consultorio.exemplo',
-      phone: '(11) 3333-4040',
+      phone: '1133334040',
       cro: 'CRO-SP 00000',
       locations: [
         CareLocation(
