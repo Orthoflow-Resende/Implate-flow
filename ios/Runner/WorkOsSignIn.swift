@@ -17,6 +17,8 @@ final class WorkOsSignIn: NSObject, ASWebAuthenticationPresentationContextProvid
         redirectUri: redirectURI,
         provider: "authkit"
       )
+      Keychain.delete(key: "refresh_token")
+      Keychain.delete(key: "session_id")
       try Keychain.save(key: "code_verifier", value: authorization.codeVerifier)
       try Keychain.save(key: "state", value: authorization.state)
     } catch {

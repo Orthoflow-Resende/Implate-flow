@@ -58,15 +58,23 @@ class RepositoryViewModel extends ChangeNotifier {
 }
 
 class SessionViewModel extends RepositoryViewModel {
-  SessionViewModel(super.repository, this.auth) {
+  SessionViewModel(
+    super.repository,
+    this.auth, {
+    this.workOsClientId = AppConfig.workOsClientId,
+    this.workOsRedirectUri = AppConfig.workOsRedirectUri,
+  }) {
     repository.bindUnauthorized(() async {
-      final identity = await auth.currentIdentity(clientId: AppConfig.workOsClientId);
+      final identity = await auth.currentIdentity(clientId: workOsClientId);
       return identity?.accessToken;
     });
-    unawaited(syncWorkOsName());
+    restored = syncWorkOsName();
   }
 
   final WorkOsAuth auth;
+  final String workOsClientId;
+  final String workOsRedirectUri;
+  late final Future<void> restored;
   bool busy = false;
   String? error;
 
@@ -74,7 +82,7 @@ class SessionViewModel extends RepositoryViewModel {
 
   Future<void> signIn() async {
     if (busy) return;
-    if (AppConfig.workOsClientId.isEmpty) {
+    if (workOsClientId.isEmpty) {
       error = 'Preencha WORKOS_CLIENT_ID em config/local.json.';
       notifyListeners();
       return;
@@ -84,8 +92,8 @@ class SessionViewModel extends RepositoryViewModel {
     notifyListeners();
     try {
       final identity = await auth.signIn(
-        clientId: AppConfig.workOsClientId,
-        redirectUri: AppConfig.workOsRedirectUri,
+        clientId: workOsClientId,
+        redirectUri: workOsRedirectUri,
       );
       repository.signIn(
         name: identity.name,
@@ -102,9 +110,9 @@ class SessionViewModel extends RepositoryViewModel {
   }
 
   Future<void> syncWorkOsName() async {
-    if (!snapshot.signedIn || AppConfig.workOsClientId.isEmpty) return;
+    if (!snapshot.signedIn || workOsClientId.isEmpty) return;
     try {
-      final identity = await auth.currentIdentity(clientId: AppConfig.workOsClientId);
+      final identity = await auth.currentIdentity(clientId: workOsClientId);
       if (identity == null) return;
       repository.signIn(
         name: identity.name,
@@ -123,7 +131,7 @@ class SessionViewModel extends RepositoryViewModel {
     error = null;
     notifyListeners();
     try {
-      await auth.signOut(redirectUri: AppConfig.workOsRedirectUri);
+      await auth.signOut(redirectUri: workOsRedirectUri);
     } on WorkOsAuthException {
       // The local session still ends so the dentist returns to login.
     } finally {

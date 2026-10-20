@@ -29,6 +29,7 @@ class ApiClinicRepository implements ClinicRepository {
   var _nameBackfilled = false;
   Future<void> _tail = Future<void>.value();
   Future<String?> Function()? _refreshToken;
+  Future<String?>? _refreshInFlight;
 
   Future<void> get settled => _tail;
 
@@ -70,7 +71,7 @@ class ApiClinicRepository implements ClinicRepository {
   @override
   Future<void> refresh() {
     return _enqueue(() async {
-      if (_token.isEmpty) return;
+      if (_token.isEmpty && _refreshToken == null) return;
       final epoch = _epoch;
       final chart = await _authorized(api.fetchChart);
       if (epoch != _epoch) return;
@@ -333,18 +334,41 @@ class ApiClinicRepository implements ClinicRepository {
   }
 
   Future<T> _authorized<T>(Future<T> Function(String token) call) async {
-    if (_token.isEmpty) {
-      throw const ClinicApiException(401, 'Entre de novo para sincronizar o prontuário.');
+    var token = _token;
+    if (token.isEmpty) {
+      token = await _refreshAccessToken() ?? '';
+      if (token.isEmpty) {
+        throw const ClinicApiException(401, 'Entre de novo para sincronizar o prontuário.');
+      }
     }
     try {
-      return await call(_token);
+      return await call(token);
     } on ClinicApiException catch (error) {
       if (error.statusCode != 401 || _refreshToken == null) rethrow;
-      final next = await _refreshToken!();
+      final next = await _refreshAccessToken();
       if (next == null || next.isEmpty) rethrow;
-      _token = next;
       return call(next);
     }
+  }
+
+  Future<String?> _refreshAccessToken() async {
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) return inFlight;
+    final refresh = _refreshToken;
+    if (refresh == null) return null;
+    final future = () async {
+      try {
+        final next = await refresh();
+        if (next != null && next.isNotEmpty) {
+          _token = next;
+        }
+        return next;
+      } finally {
+        _refreshInFlight = null;
+      }
+    }();
+    _refreshInFlight = future;
+    return future;
   }
 
   Future<void> _enqueue(Future<void> Function() job, {String? success}) {
