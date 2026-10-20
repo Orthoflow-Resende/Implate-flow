@@ -70,6 +70,7 @@ class _TraceabilityEditorPageState extends State<TraceabilityEditorPage> {
                 : ImplantPiece(
                     manufacturer: drafts[site.fdi]?.manufacturer ?? '',
                     model: drafts[site.fdi]?.model ?? '',
+                    reference: drafts[site.fdi]?.reference ?? '',
                     size: drafts[site.fdi]?.size ?? '',
                     lot: drafts[site.fdi]?.lot ?? '',
                     anvisa: drafts[site.fdi]?.anvisa ?? '',
@@ -198,21 +199,41 @@ class _SiteCard extends StatelessWidget {
                 options: implantCatalog.keys.toList(),
                 onChanged: (value) {
                   draft.manufacturer = value;
-                  draft.model = '';
+                  draft.clearCatalogFields();
                   onChanged();
                 },
               ),
               const SizedBox(height: 16),
               PresetDropdown(
-                label: 'Modelo',
-                value: draft.model,
-                options: implantCatalog[draft.manufacturer] ?? const [],
+                label: 'Modelo ou referência',
+                value: draft.model.isNotEmpty ? draft.model : draft.reference,
+                options: modelOrReferenceOptions(draft.manufacturer),
                 enabled: draft.manufacturer.isNotEmpty,
                 onChanged: (value) {
-                  draft.model = value;
+                  final result = draft.selectModelOrReference(value);
                   onChanged();
+                  if (result == ImplantCatalogLookup.notFound && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Referência não encontrada para este fabricante. Corrija o valor.'),
+                      ),
+                    );
+                  }
                 },
               ),
+              if (draft.reference.isNotEmpty || draft.anvisa.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    [
+                      if (draft.reference.isNotEmpty) 'Ref. ${draft.reference}',
+                      if (draft.anvisa.isNotEmpty) 'ANVISA ${draft.anvisa}',
+                    ].join(' · '),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               PresetDropdown(
                 label: 'Tamanho',

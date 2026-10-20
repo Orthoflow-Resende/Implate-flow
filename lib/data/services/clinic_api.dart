@@ -345,6 +345,7 @@ Map<String, Object?> _procedureBody(Procedure procedure, {required bool includeI
 Map<String, Object?> _pieceBody(ImplantPiece piece) => {
       'manufacturer': piece.manufacturer,
       'model': piece.model,
+      'reference': piece.reference,
       'size': piece.size,
       'lot': piece.lot,
       'manufacturedOn': piece.manufacturedOn == null ? null : _isoDate(piece.manufacturedOn!),

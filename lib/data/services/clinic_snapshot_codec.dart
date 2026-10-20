@@ -325,6 +325,7 @@ Map<String, dynamic> _pieceToJson(ImplantPiece piece) {
   return {
     'manufacturer': piece.manufacturer,
     'model': piece.model,
+    'reference': piece.reference,
     'size': piece.size,
     'lot': piece.lot,
     'manufacturedOn': _dateOrNull(piece.manufacturedOn),
@@ -337,6 +338,7 @@ ImplantPiece _pieceFromJson(Map<String, dynamic> json) {
   return ImplantPiece(
     manufacturer: json['manufacturer'] as String? ?? '',
     model: json['model'] as String? ?? '',
+    reference: json['reference'] as String? ?? '',
     size: json['size'] as String? ?? '',
     lot: json['lot'] as String? ?? '',
     manufacturedOn: _parseDateOrNull(json['manufacturedOn'] as String?),

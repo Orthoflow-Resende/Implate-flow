@@ -458,7 +458,17 @@ class _ToothCard extends StatelessWidget {
           if (viewModel.isImplant) ...[
             _ManufacturerField(viewModel: viewModel, tooth: tooth),
             const SizedBox(height: 12),
-            _ModelField(viewModel: viewModel, tooth: tooth),
+            _ModelOrReferenceField(viewModel: viewModel, tooth: tooth),
+            if (draft.reference.isNotEmpty || draft.anvisa.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                [
+                  if (draft.reference.isNotEmpty) 'Ref. ${draft.reference}',
+                  if (draft.anvisa.isNotEmpty) 'ANVISA ${draft.anvisa}',
+                ].join(' · '),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(height: 12),
             PresetDropdown(
               label: 'Tamanho',
@@ -514,14 +524,14 @@ class _ManufacturerField extends StatelessWidget {
       options: implantCatalog.keys.toList(),
       onChanged: (value) => viewModel.updateDraft(tooth, (item) {
         item.manufacturer = value;
-        item.model = '';
+        item.clearCatalogFields();
       }),
     );
   }
 }
 
-class _ModelField extends StatelessWidget {
-  const _ModelField({
+class _ModelOrReferenceField extends StatelessWidget {
+  const _ModelOrReferenceField({
     required this.viewModel,
     required this.tooth,
   });
@@ -532,13 +542,26 @@ class _ModelField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final draft = viewModel.drafts[tooth]!;
-    final models = implantCatalog[draft.manufacturer] ?? const <String>[];
+    final options = modelOrReferenceOptions(draft.manufacturer);
+    final display = draft.model.isNotEmpty ? draft.model : draft.reference;
     return PresetDropdown(
-      label: 'Modelo',
-      value: draft.model,
-      options: models,
+      label: 'Modelo ou referência',
+      value: display,
+      options: options,
       enabled: draft.manufacturer.isNotEmpty,
-      onChanged: (value) => viewModel.updateDraft(tooth, (item) => item.model = value),
+      onChanged: (value) {
+        late final ImplantCatalogLookup result;
+        viewModel.updateDraft(tooth, (item) {
+          result = item.selectModelOrReference(value);
+        });
+        if (result == ImplantCatalogLookup.notFound && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Referência não encontrada para este fabricante. Corrija o valor.'),
+            ),
+          );
+        }
+      },
     );
   }
 }

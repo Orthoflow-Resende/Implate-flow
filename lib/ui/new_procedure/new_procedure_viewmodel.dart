@@ -150,6 +150,7 @@ class GraftDraft {
 class PieceDraft {
   String manufacturer = '';
   String model = '';
+  String reference = '';
   String size = '';
   String lot = '';
   String anvisa = '';
@@ -163,6 +164,7 @@ class PieceDraft {
     return PieceDraft()
       ..manufacturer = piece?.manufacturer ?? ''
       ..model = piece?.model ?? ''
+      ..reference = piece?.reference ?? ''
       ..size = piece?.size ?? ''
       ..lot = piece?.lot ?? ''
       ..anvisa = piece?.anvisa ?? ''
@@ -172,6 +174,42 @@ class PieceDraft {
       ..grafts = site.grafts.isEmpty
           ? [GraftDraft()]
           : [for (final graft in site.grafts) GraftDraft.fromMaterial(graft)];
+  }
+
+  void clearCatalogFields() {
+    model = '';
+    reference = '';
+    size = '';
+    anvisa = '';
+  }
+
+  void applyCatalogEntry(ImplantCatalogEntry entry) {
+    model = entry.model;
+    reference = entry.reference;
+    size = entry.size;
+    anvisa = entry.anvisa;
+  }
+
+  ImplantCatalogLookup selectModelOrReference(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      clearCatalogFields();
+      return ImplantCatalogLookup.cleared;
+    }
+    final byReference = lookupImplantReference(manufacturer, trimmed);
+    if (byReference != null) {
+      applyCatalogEntry(byReference);
+      return ImplantCatalogLookup.filled;
+    }
+    final modelName = catalogModelName(manufacturer, trimmed);
+    if (modelName != null) {
+      model = modelName;
+      reference = '';
+      size = '';
+      anvisa = '';
+      return ImplantCatalogLookup.modelOnly;
+    }
+    return ImplantCatalogLookup.notFound;
   }
 }
 
@@ -575,7 +613,9 @@ class NewProcedureViewModel extends ChangeNotifier {
       if (draft == null) continue;
       draft.manufacturer = first.manufacturer;
       draft.model = first.model;
+      draft.reference = first.reference;
       draft.size = first.size;
+      draft.anvisa = first.anvisa;
       draft.withGraft = first.withGraft;
       draft.grafts = [for (final graft in first.grafts) graft.copy()];
     }
@@ -641,6 +681,7 @@ class NewProcedureViewModel extends ChangeNotifier {
                     : ImplantPiece(
                         manufacturer: drafts[tooth]?.manufacturer ?? '',
                         model: drafts[tooth]?.model ?? '',
+                        reference: drafts[tooth]?.reference ?? '',
                         size: drafts[tooth]?.size ?? '',
                         lot: drafts[tooth]?.lot ?? '',
                         anvisa: drafts[tooth]?.anvisa ?? '',

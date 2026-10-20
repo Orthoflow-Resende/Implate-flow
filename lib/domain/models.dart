@@ -106,6 +106,117 @@ const implantSizes = <String>[
   '5.0 × 13 mm',
 ];
 
+class ImplantCatalogEntry {
+  const ImplantCatalogEntry({
+    required this.manufacturer,
+    required this.model,
+    required this.reference,
+    required this.size,
+    this.anvisa = '',
+  });
+
+  final String manufacturer;
+  final String model;
+  final String reference;
+  final String size;
+  final String anvisa;
+}
+
+/// Referências comerciais do catálogo local (espelho do seed PostgreSQL).
+const implantReferenceCatalog = <ImplantCatalogEntry>[
+  ImplantCatalogEntry(
+    manufacturer: 'Neodent',
+    model: 'Helix GM',
+    reference: '114.224',
+    size: '4.0 × 10 mm',
+    anvisa: '80156920014',
+  ),
+  ImplantCatalogEntry(
+    manufacturer: 'Neodent',
+    model: 'Helix GM',
+    reference: '114.223',
+    size: '3.75 × 10 mm',
+    anvisa: '80156920014',
+  ),
+  ImplantCatalogEntry(
+    manufacturer: 'Neodent',
+    model: 'Drive GM',
+    reference: '110.618',
+    size: '4.0 × 10 mm',
+    anvisa: '80156920011',
+  ),
+  ImplantCatalogEntry(
+    manufacturer: 'Straumann',
+    model: 'BLX',
+    reference: '021.4301',
+    size: '4.0 × 10 mm',
+    anvisa: '10345590025',
+  ),
+  ImplantCatalogEntry(
+    manufacturer: 'Straumann',
+    model: 'BLT',
+    reference: '021.2310',
+    size: '4.0 × 10 mm',
+    anvisa: '10345590018',
+  ),
+  ImplantCatalogEntry(
+    manufacturer: 'Nobel Biocare',
+    model: 'NobelActive',
+    reference: '34130',
+    size: '4.3 × 10 mm',
+    anvisa: '80146540033',
+  ),
+  ImplantCatalogEntry(
+    manufacturer: 'Nobel Biocare',
+    model: 'NobelParallel',
+    reference: '30130',
+    size: '4.3 × 10 mm',
+    anvisa: '80146540041',
+  ),
+];
+
+enum ImplantCatalogLookup {
+  filled,
+  modelOnly,
+  notFound,
+  cleared,
+}
+
+List<ImplantCatalogEntry> implantReferencesFor(String manufacturer) {
+  return [
+    for (final entry in implantReferenceCatalog)
+      if (entry.manufacturer == manufacturer) entry,
+  ];
+}
+
+List<String> modelOrReferenceOptions(String manufacturer) {
+  final models = implantCatalog[manufacturer] ?? const <String>[];
+  final references = [
+    for (final entry in implantReferencesFor(manufacturer)) entry.reference,
+  ];
+  return [...models, ...references];
+}
+
+ImplantCatalogEntry? lookupImplantReference(String manufacturer, String reference) {
+  final query = reference.trim().toLowerCase();
+  if (manufacturer.isEmpty || query.isEmpty) return null;
+  final matches = [
+    for (final entry in implantReferenceCatalog)
+      if (entry.manufacturer == manufacturer && entry.reference.toLowerCase() == query) entry,
+  ];
+  if (matches.length == 1) return matches.single;
+  return null;
+}
+
+String? catalogModelName(String manufacturer, String value) {
+  final query = value.trim().toLowerCase();
+  if (query.isEmpty) return null;
+  for (final model in implantCatalog[manufacturer] ?? const <String>[]) {
+    if (model.toLowerCase() == query) return model;
+  }
+  return null;
+}
+
 List<String> withCurrentOption(List<String> options, String current) {
   if (current.isNotEmpty && !options.contains(current)) {
     return [current, ...options];
@@ -739,6 +850,7 @@ class ImplantPiece {
   const ImplantPiece({
     this.manufacturer = '',
     this.model = '',
+    this.reference = '',
     this.size = '',
     this.lot = '',
     this.manufacturedOn,
@@ -748,6 +860,7 @@ class ImplantPiece {
 
   final String manufacturer;
   final String model;
+  final String reference;
   final String size;
   final String lot;
   final DateTime? manufacturedOn;
