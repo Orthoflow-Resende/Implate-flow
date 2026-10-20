@@ -259,16 +259,20 @@ class NewProcedureViewModel extends ChangeNotifier {
 
   bool get asksSinusLift => modality == Modality.enxerto || associatedGraft;
 
-  String? get saveError {
-    if (isProsthesis && linkedProcedureIds.isEmpty) {
-      return 'Vincule ao menos um implante já registrado.';
-    }
-    return sinusLiftIssue(
-      applies: asksSinusLift,
-      sinusLift: sinusLift,
-      technique: sinusLiftTechnique,
-      note: sinusLiftNote,
-    );
+  String? get saveError => sinusLiftIssue(
+        applies: asksSinusLift,
+        sinusLift: sinusLift,
+        technique: sinusLiftTechnique,
+        note: sinusLiftNote,
+      );
+
+  List<Procedure> linkedImplantsForTooth(int tooth) {
+    return [
+      for (final procedure in linkableImplants)
+        if (linkedProcedureIds.contains(procedure.id) &&
+            procedure.sites.any((site) => site.fdi == tooth))
+          procedure,
+    ];
   }
 
   bool get associatedGraftHasData =>

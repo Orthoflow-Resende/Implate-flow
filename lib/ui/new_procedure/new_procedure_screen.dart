@@ -256,8 +256,14 @@ class _SummaryStep extends StatelessWidget {
                 const SizedBox(height: 20),
               ],
               AppSectionHeader(
-                title: 'Rastreio',
-                subtitle: 'Pode ficar em branco e ser completado depois.',
+                title: viewModel.isProsthesis
+                    ? (viewModel.subtype == ProcedureSubtype.protocolo
+                        ? 'Rastreabilidade da região'
+                        : 'Rastreabilidade da prótese')
+                    : 'Rastreio',
+                subtitle: viewModel.isProsthesis
+                    ? 'Consulta os implantes vinculados nesta região. O vínculo é opcional.'
+                    : 'Pode ficar em branco e ser completado depois.',
                 action: viewModel.pillars.length > 1 && viewModel.isImplant
                     ? TextButton(
                         onPressed: viewModel.copyFromFirst,
@@ -389,16 +395,50 @@ class _ToothCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final draft = viewModel.drafts[tooth]!;
     final modality = viewModel.modality!;
+    final linked = viewModel.isProsthesis ? viewModel.linkedImplantsForTooth(tooth) : const <Procedure>[];
     final pieceLine = [
       draft.manufacturer,
       draft.model,
     ].where((part) => part.isNotEmpty).join(' ');
+    final prosthesisSubtitle = linked.isEmpty
+        ? 'Sem implante vinculado nesta região'
+        : linked.map((item) => item.classificationLabel).join(' · ');
     return AppCollapseCard(
       title: viewModel.subtype == ProcedureSubtype.protocolo ? 'Região $tooth' : 'Dente $tooth',
-      subtitle: pieceLine.isEmpty ? 'Rastreio opcional' : pieceLine,
+      subtitle: viewModel.isProsthesis
+          ? prosthesisSubtitle
+          : (pieceLine.isEmpty ? 'Rastreio opcional' : pieceLine),
       initiallyExpanded: expanded,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (viewModel.isProsthesis) ...[
+            if (linked.isEmpty)
+              const AppEmptyHint(
+                'Nenhum implante vinculado aqui. Marque um acima, se houver, ou salve sem vínculo.',
+              )
+            else
+              for (final procedure in linked) ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(procedure.classificationLabel),
+                  subtitle: Text(
+                    [
+                      procedure.teethLabel,
+                      procedure.statusLabel,
+                      for (final site in procedure.sites.where((site) => site.fdi == tooth))
+                        if (site.piece != null)
+                          [
+                            site.piece!.manufacturer,
+                            site.piece!.model,
+                            if (site.piece!.lot.isNotEmpty) 'Lote ${site.piece!.lot}',
+                          ].where((part) => part.isNotEmpty).join(' · '),
+                    ].where((part) => part.isNotEmpty).join('\n'),
+                  ),
+                  isThreeLine: true,
+                ),
+              ],
+          ],
           if (viewModel.isImplant) ...[
             _ManufacturerField(viewModel: viewModel, tooth: tooth),
             const SizedBox(height: 12),

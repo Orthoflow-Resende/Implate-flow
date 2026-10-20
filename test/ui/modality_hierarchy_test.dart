@@ -84,10 +84,12 @@ void main() {
     viewModel.toggleTooth(15);
     viewModel.toggleTooth(16);
     viewModel.openSummary();
-    expect(viewModel.saveError, isNotNull);
+    expect(viewModel.saveError, isNull);
+    expect(viewModel.linkedImplantsForTooth(14), isEmpty);
 
     viewModel.toggleLinkedProcedure(implant.id);
     expect(viewModel.saveError, isNull);
+    expect(viewModel.linkedImplantsForTooth(14), isNotEmpty);
     final created = viewModel.save().single;
     expect(created.modality, Modality.protese);
     expect(created.subtype, ProcedureSubtype.ponte);
