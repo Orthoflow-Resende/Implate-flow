@@ -208,7 +208,7 @@ class NewProcedureViewModel extends ChangeNotifier {
   bool sinusLift = false;
   SinusLiftTechnique? sinusLiftTechnique;
   String sinusLiftNote = '';
-  final Set<String> linkedProcedureIds = {};
+  final Set<String> linkedImplantIds = {};
   Arch arch = Arch.superior;
   final Set<int> selected = {};
   final Map<int, ToothRole> roles = {};
@@ -235,7 +235,7 @@ class NewProcedureViewModel extends ChangeNotifier {
   bool get schedulesSurgicalReturns => modality != null && !isProsthesis;
 
   bool get hasDraftProgress =>
-      selected.isNotEmpty || linkedProcedureIds.isNotEmpty || associatedGraft || extraReturns.isNotEmpty;
+      selected.isNotEmpty || linkedImplantIds.isNotEmpty || associatedGraft || extraReturns.isNotEmpty;
 
   String get draftLabel => classificationLabelFor(
         modality: modality ?? Modality.implante,
@@ -243,9 +243,8 @@ class NewProcedureViewModel extends ChangeNotifier {
         associatedGraft: associatedGraft,
       );
 
-  List<Procedure> get linkableImplants => repository.current.procedures
-      .where((procedure) => procedure.patientId == patientId && procedure.modality == Modality.implante)
-      .toList();
+  List<InstalledImplant> get linkableImplants =>
+      repository.current.implantsFor(patientId, activeOnly: true);
 
   bool get canContinue => switch (subtype) {
         ProcedureSubtype.ponte => selected.isNotEmpty && isContiguousSpan(selected) && pillars.isNotEmpty,
@@ -266,13 +265,42 @@ class NewProcedureViewModel extends ChangeNotifier {
         note: sinusLiftNote,
       );
 
-  List<Procedure> linkedImplantsForTooth(int tooth) {
+  List<InstalledImplant> linkedImplantsForTooth(int tooth) {
     return [
-      for (final procedure in linkableImplants)
-        if (linkedProcedureIds.contains(procedure.id) &&
-            procedure.sites.any((site) => site.fdi == tooth))
-          procedure,
+      for (final implant in linkableImplants)
+        if (linkedImplantIds.contains(implant.id) && implant.fdi == tooth) implant,
     ];
+  }
+
+  InstalledImplant addPreexistingImplant({
+    required int fdi,
+    String manufacturer = '',
+    String model = '',
+    String size = '',
+    String lot = '',
+    DateTime? installedOn,
+    String originClinic = '',
+    String notes = '',
+    bool link = true,
+  }) {
+    final implant = repository.createInstalledImplant(
+      InstalledImplant(
+        id: repository.allocateId('imp'),
+        patientId: patientId,
+        fdi: fdi,
+        origin: ImplantOrigin.preexisting,
+        manufacturer: manufacturer,
+        model: model,
+        size: size,
+        lot: lot,
+        installedOn: installedOn,
+        originClinic: originClinic,
+        notes: notes,
+      ),
+    );
+    if (link) linkedImplantIds.add(implant.id);
+    notifyListeners();
+    return implant;
   }
 
   bool get associatedGraftHasData =>
@@ -328,8 +356,8 @@ class NewProcedureViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleLinkedProcedure(String id) {
-    if (!linkedProcedureIds.add(id)) linkedProcedureIds.remove(id);
+  void toggleLinkedImplant(String id) {
+    if (!linkedImplantIds.add(id)) linkedImplantIds.remove(id);
     notifyListeners();
   }
 
@@ -337,7 +365,7 @@ class NewProcedureViewModel extends ChangeNotifier {
     selected.clear();
     roles.clear();
     drafts.clear();
-    linkedProcedureIds.clear();
+    linkedImplantIds.clear();
     associatedGraft = false;
     _clearSinusLift();
     extraReturns.clear();
@@ -594,7 +622,8 @@ class NewProcedureViewModel extends ChangeNotifier {
           sinusLift: recordSinus && sinusLift,
           sinusLiftTechnique: recordSinus && sinusLift ? sinusLiftTechnique : null,
           sinusLiftNote: recordSinus && sinusLift ? sinusLiftNote.trim() : '',
-          linkedProcedureIds: isProsthesis ? linkedProcedureIds.toList() : const [],
+          linkedImplantIds: isProsthesis ? linkedImplantIds.toList() : const [],
+          linkedProcedureIds: const [],
           arch: subtype == ProcedureSubtype.protocolo ? arch : null,
           surgeryDate: surgery,
           statusLabel: switch (current) {

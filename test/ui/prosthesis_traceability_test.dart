@@ -15,13 +15,18 @@ void main() {
   ]) {
     testWidgets('prótese ${subtype.name} mostra estado vazio sem vínculo', (tester) async {
       final repository = MockClinicRepository(MockClinicService());
-      final patient = repository.current.patients.firstWhere((item) => item.name == 'João Lima');
+      final patient = repository.current.patients.firstWhere((item) => item.name == 'Maria Souza');
       final viewModel = NewProcedureViewModel(repository, patientId: patient.id);
       viewModel.chooseModality(Modality.protese, subtype: subtype);
-      viewModel.toggleTooth(14);
-      if (subtype == ProcedureSubtype.ponte) {
+      if (subtype == ProcedureSubtype.protocolo) {
+        viewModel.toggleTooth(11);
+        viewModel.toggleTooth(21);
+      } else if (subtype == ProcedureSubtype.ponte) {
+        viewModel.toggleTooth(14);
         viewModel.toggleTooth(15);
         viewModel.toggleTooth(16);
+      } else {
+        viewModel.toggleTooth(14);
       }
       viewModel.openSummary();
 
@@ -36,7 +41,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Rastreabilidade'), findsOneWidget);
-      expect(find.textContaining('Nenhum implante vinculado'), findsWidgets);
+      expect(find.text('Adicionar implante preexistente'), findsOneWidget);
+      expect(find.textContaining('Nenhum implante'), findsWidgets);
       expect(viewModel.saveError, isNull);
     });
   }
@@ -44,13 +50,11 @@ void main() {
   testWidgets('prótese com vínculo lista o implante na região', (tester) async {
     final repository = MockClinicRepository(MockClinicService());
     final patient = repository.current.patients.firstWhere((item) => item.name == 'João Lima');
-    final implant = repository.current.procedures.firstWhere(
-      (item) => item.patientId == patient.id && item.modality == Modality.implante,
-    );
+    final implant = repository.current.implantsFor(patient.id, activeOnly: true).first;
     final viewModel = NewProcedureViewModel(repository, patientId: patient.id);
     viewModel.chooseModality(Modality.protese, subtype: ProcedureSubtype.unitario);
-    viewModel.toggleTooth(implant.sites.first.fdi);
-    viewModel.toggleLinkedProcedure(implant.id);
+    viewModel.toggleTooth(implant.fdi);
+    viewModel.toggleLinkedImplant(implant.id);
     viewModel.openSummary();
 
     await tester.pumpWidget(
@@ -64,6 +68,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Sem implante vinculado'), findsNothing);
-    expect(find.text(implant.classificationLabel), findsWidgets);
+    expect(find.text(implant.title), findsWidgets);
+    expect(find.text('Adicionar implante preexistente'), findsOneWidget);
   });
 }

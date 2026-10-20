@@ -168,7 +168,51 @@ class MockClinicRepository implements ClinicRepository {
 
   @override
   void saveProcedures(List<Procedure> created) {
-    _emit(_snapshot.copyWith(procedures: [..._snapshot.procedures, ...created]));
+    final provisioned = <InstalledImplant>[
+      for (final procedure in created)
+        if (procedure.modality == Modality.implante)
+          for (final site in procedure.sites)
+            if (site.role == ToothRole.pilar)
+              InstalledImplant(
+                id: allocateId('imp'),
+                patientId: procedure.patientId,
+                fdi: site.fdi,
+                origin: ImplantOrigin.procedureRecorded,
+                sourceProcedureId: procedure.id,
+                manufacturer: site.piece?.manufacturer ?? '',
+                model: site.piece?.model ?? '',
+                size: site.piece?.size ?? '',
+                lot: site.piece?.lot ?? '',
+                installedOn: procedure.surgeryDate,
+              ),
+    ];
+    _emit(
+      _snapshot.copyWith(
+        procedures: [..._snapshot.procedures, ...created],
+        implants: [..._snapshot.implants, ...provisioned],
+      ),
+    );
+  }
+
+  @override
+  InstalledImplant createInstalledImplant(InstalledImplant implant) {
+    final saved = implant.origin == ImplantOrigin.preexisting
+        ? implant
+        : implant.copyWith();
+    _emit(_snapshot.copyWith(implants: [..._snapshot.implants, saved]));
+    return saved;
+  }
+
+  @override
+  void updateInstalledImplant(InstalledImplant implant) {
+    _emit(
+      _snapshot.copyWith(
+        implants: [
+          for (final item in _snapshot.implants)
+            if (item.id == implant.id) implant else item,
+        ],
+      ),
+    );
   }
 
   @override

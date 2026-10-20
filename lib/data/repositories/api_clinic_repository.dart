@@ -252,6 +252,27 @@ class ApiClinicRepository implements ClinicRepository {
     );
   }
 
+  @override
+  InstalledImplant createInstalledImplant(InstalledImplant implant) {
+    _epoch++;
+    final saved = _local.createInstalledImplant(implant);
+    _enqueue(
+      () => _authorized((token) => api.createImplant(token, saved)),
+      success: 'Implante cadastrado com sucesso.',
+    );
+    return saved;
+  }
+
+  @override
+  void updateInstalledImplant(InstalledImplant implant) {
+    _epoch++;
+    _local.updateInstalledImplant(implant);
+    _enqueue(
+      () => _authorized((token) => api.updateImplant(token, implant)),
+      success: 'Implante atualizado com sucesso.',
+    );
+  }
+
   List<Visit> _visits(String procedureId) {
     return _local.current.procedures.firstWhere((item) => item.id == procedureId).visits;
   }

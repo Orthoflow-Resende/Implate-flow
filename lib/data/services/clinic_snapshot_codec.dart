@@ -55,6 +55,9 @@ Map<String, dynamic> snapshotToJson(ClinicSnapshot snapshot) {
     'procedures': [
       for (final procedure in snapshot.procedures) _procedureToJson(procedure),
     ],
+    'implants': [
+      for (final implant in snapshot.implants) _implantToJson(implant),
+    ],
   };
 }
 
@@ -104,8 +107,63 @@ ClinicSnapshot snapshotFromJson(Map<String, dynamic> json) {
       for (final item in json['procedures'] as List<dynamic>? ?? const [])
         _procedureFromJson(item as Map<String, dynamic>),
     ],
+    implants: _implantsFromJson(json),
   );
 }
+
+List<InstalledImplant> _implantsFromJson(Map<String, dynamic> json) {
+  final collected = <InstalledImplant>[];
+  final seen = <String>{};
+  void add(InstalledImplant implant) {
+    if (!seen.add(implant.id)) return;
+    collected.add(implant);
+  }
+
+  for (final item in json['implants'] as List<dynamic>? ?? const []) {
+    add(_implantFromJson(item as Map<String, dynamic>));
+  }
+  for (final patient in json['patients'] as List<dynamic>? ?? const []) {
+    final patientId = patient['id'] as String?;
+    for (final item in patient['implants'] as List<dynamic>? ?? const []) {
+      final map = Map<String, dynamic>.from(item as Map);
+      map.putIfAbsent('patientId', () => patientId);
+      add(_implantFromJson(map));
+    }
+  }
+  return collected;
+}
+
+Map<String, dynamic> _implantToJson(InstalledImplant implant) => {
+      'id': implant.id,
+      'patientId': implant.patientId,
+      'fdi': implant.fdi,
+      'origin': implantOriginWire(implant.origin),
+      'sourceProcedureId': implant.sourceProcedureId,
+      'manufacturer': implant.manufacturer,
+      'model': implant.model,
+      'size': implant.size,
+      'lot': implant.lot,
+      'installedOn': _dateOrNull(implant.installedOn),
+      'originClinic': implant.originClinic,
+      'notes': implant.notes,
+      'active': implant.active,
+    };
+
+InstalledImplant _implantFromJson(Map<String, dynamic> json) => InstalledImplant(
+      id: json['id'] as String,
+      patientId: json['patientId'] as String,
+      fdi: json['fdi'] as int,
+      origin: implantOriginFromWire(json['origin'] as String?),
+      sourceProcedureId: json['sourceProcedureId'] as String?,
+      manufacturer: json['manufacturer'] as String? ?? '',
+      model: json['model'] as String? ?? '',
+      size: json['size'] as String? ?? '',
+      lot: json['lot'] as String? ?? '',
+      installedOn: _parseDateOrNull(json['installedOn'] as String?),
+      originClinic: json['originClinic'] as String? ?? '',
+      notes: json['notes'] as String? ?? '',
+      active: json['active'] as bool? ?? true,
+    );
 
 Map<String, dynamic> _procedureToJson(Procedure procedure) {
   return {
@@ -118,6 +176,7 @@ Map<String, dynamic> _procedureToJson(Procedure procedure) {
     'sinusLiftTechnique': procedure.sinusLiftTechnique?.name,
     'sinusLiftNote': procedure.sinusLiftNote,
     'linkedProcedureIds': procedure.linkedProcedureIds,
+    'linkedImplantIds': procedure.linkedImplantIds,
     'arch': procedure.arch?.name,
     'surgeryDate': _date(procedure.surgeryDate),
     'statusLabel': procedure.statusLabel,
@@ -193,6 +252,9 @@ Procedure _procedureFromJson(Map<String, dynamic> json) {
     sinusLiftNote: json['sinusLiftNote'] as String? ?? '',
     linkedProcedureIds: [
       for (final id in json['linkedProcedureIds'] as List<dynamic>? ?? const []) id as String,
+    ],
+    linkedImplantIds: [
+      for (final id in json['linkedImplantIds'] as List<dynamic>? ?? const []) id as String,
     ],
     arch: json['arch'] == null ? null : Arch.values.byName(json['arch'] as String),
     surgeryDate: _parseDate(json['surgeryDate'] as String),

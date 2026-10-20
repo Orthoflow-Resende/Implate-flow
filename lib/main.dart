@@ -52,6 +52,7 @@ ClinicSnapshot _cachedChart(ClinicSnapshot? loaded) {
   final ids = [
     for (final patient in loaded.patients) patient.id,
     for (final procedure in loaded.procedures) procedure.id,
+    for (final implant in loaded.implants) implant.id,
     for (final location in loaded.profile.locations) location.id,
   ];
   if (ids.any((id) => !_serverId.hasMatch(id))) return empty;

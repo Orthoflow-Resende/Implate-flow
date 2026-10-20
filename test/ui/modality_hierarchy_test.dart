@@ -75,9 +75,8 @@ void main() {
   test('prótese vincula implante existente e não cria sutura', () {
     final repository = MockClinicRepository(MockClinicService());
     final patient = repository.current.patients.firstWhere((item) => item.name == 'João Lima');
-    final implant = repository.current.procedures.firstWhere(
-      (item) => item.patientId == patient.id && item.modality == Modality.implante,
-    );
+    final inventory = repository.current.implantsFor(patient.id, activeOnly: true);
+    final first = inventory.firstWhere((item) => item.fdi == 14);
     final viewModel = NewProcedureViewModel(repository, patientId: patient.id);
     viewModel.chooseModality(Modality.protese, subtype: ProcedureSubtype.ponte);
     viewModel.toggleTooth(14);
@@ -87,17 +86,16 @@ void main() {
     expect(viewModel.saveError, isNull);
     expect(viewModel.linkedImplantsForTooth(14), isEmpty);
 
-    viewModel.toggleLinkedProcedure(implant.id);
+    viewModel.toggleLinkedImplant(first.id);
     expect(viewModel.saveError, isNull);
     expect(viewModel.linkedImplantsForTooth(14), isNotEmpty);
     final created = viewModel.save().single;
     expect(created.modality, Modality.protese);
     expect(created.subtype, ProcedureSubtype.ponte);
-    expect(created.linkedProcedureIds, [implant.id]);
+    expect(created.linkedImplantIds, [first.id]);
     expect(created.sites.every((site) => site.piece == null), isTrue);
     expect(created.followUps.map((item) => item.reason), isNot(contains(ReturnReason.sutura)));
     expect(created.followUps.map((item) => item.reason), isNot(contains(ReturnReason.osseointegracao)));
-    expect(implant.sites.where((site) => site.piece != null), isNotEmpty);
   });
 }
 

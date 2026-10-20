@@ -126,6 +126,44 @@ class ClinicApi {
     );
   }
 
+  Future<void> createImplant(String token, InstalledImplant implant) async {
+    await _send(
+      'POST',
+      '/v1/patients/${implant.patientId}/implants',
+      token: token,
+      body: {
+        'id': implant.id,
+        'fdi': implant.fdi,
+        'manufacturer': implant.manufacturer,
+        'model': implant.model,
+        'size': implant.size,
+        'lot': implant.lot,
+        'installedOn': implant.installedOn == null ? null : _isoDate(implant.installedOn!),
+        'originClinic': implant.originClinic,
+        'notes': implant.notes,
+      },
+    );
+  }
+
+  Future<void> updateImplant(String token, InstalledImplant implant) async {
+    await _send(
+      'PATCH',
+      '/v1/implants/${implant.id}',
+      token: token,
+      body: {
+        'fdi': implant.fdi,
+        'manufacturer': implant.manufacturer,
+        'model': implant.model,
+        'size': implant.size,
+        'lot': implant.lot,
+        'installedOn': implant.installedOn == null ? null : _isoDate(implant.installedOn!),
+        'originClinic': implant.originClinic,
+        'notes': implant.notes,
+        'active': implant.active,
+      },
+    );
+  }
+
   Future<void> createLocation(String token, CareLocation location) async {
     await _send(
       'POST',
@@ -275,6 +313,7 @@ Map<String, Object?> _procedureBody(Procedure procedure, {required bool includeI
       if (includeIdentity) 'arch': procedure.arch?.name,
       if (includeIdentity) 'surgeryDate': _isoDate(procedure.surgeryDate),
       if (includeIdentity) 'linkedProcedureIds': procedure.linkedProcedureIds,
+      if (includeIdentity) 'linkedImplantIds': procedure.linkedImplantIds,
       if (includeIdentity)
         'followUps': [
           for (final followUp in procedure.followUps)

@@ -531,6 +531,119 @@ class DentistProfile {
   }
 }
 
+enum ImplantOrigin { preexisting, procedureRecorded }
+
+String implantOriginLabel(ImplantOrigin origin) => switch (origin) {
+      ImplantOrigin.preexisting => 'Preexistente / histórico informado',
+      ImplantOrigin.procedureRecorded => 'Cirurgia no sistema',
+    };
+
+ImplantOrigin implantOriginFromWire(String? value) => switch (value) {
+      'procedure_recorded' => ImplantOrigin.procedureRecorded,
+      _ => ImplantOrigin.preexisting,
+    };
+
+String implantOriginWire(ImplantOrigin origin) => switch (origin) {
+      ImplantOrigin.preexisting => 'preexisting',
+      ImplantOrigin.procedureRecorded => 'procedure_recorded',
+    };
+
+class InstalledImplant {
+  const InstalledImplant({
+    required this.id,
+    required this.patientId,
+    required this.fdi,
+    required this.origin,
+    this.sourceProcedureId,
+    this.manufacturer = '',
+    this.model = '',
+    this.size = '',
+    this.lot = '',
+    this.installedOn,
+    this.originClinic = '',
+    this.notes = '',
+    this.active = true,
+  });
+
+  final String id;
+  final String patientId;
+  final int fdi;
+  final ImplantOrigin origin;
+  final String? sourceProcedureId;
+  final String manufacturer;
+  final String model;
+  final String size;
+  final String lot;
+  final DateTime? installedOn;
+  final String originClinic;
+  final String notes;
+  final bool active;
+
+  String get title => 'Dente $fdi';
+
+  String get subtitle {
+    final piece = [manufacturer, model].where((part) => part.isNotEmpty).join(' ');
+    return [
+      implantOriginLabel(origin),
+      if (piece.isNotEmpty) piece,
+      if (!active) 'Inativo',
+    ].join(' · ');
+  }
+
+  InstalledImplant copyWith({
+    int? fdi,
+    String? manufacturer,
+    String? model,
+    String? size,
+    String? lot,
+    DateTime? installedOn,
+    String? originClinic,
+    String? notes,
+    bool? active,
+    bool clearInstalledOn = false,
+  }) {
+    return InstalledImplant(
+      id: id,
+      patientId: patientId,
+      fdi: fdi ?? this.fdi,
+      origin: origin,
+      sourceProcedureId: sourceProcedureId,
+      manufacturer: manufacturer ?? this.manufacturer,
+      model: model ?? this.model,
+      size: size ?? this.size,
+      lot: lot ?? this.lot,
+      installedOn: clearInstalledOn ? null : installedOn ?? this.installedOn,
+      originClinic: originClinic ?? this.originClinic,
+      notes: notes ?? this.notes,
+      active: active ?? this.active,
+    );
+  }
+}
+
+class PreexistingImplantDraft {
+  const PreexistingImplantDraft({
+    required this.fdi,
+    this.manufacturer = '',
+    this.model = '',
+    this.size = '',
+    this.lot = '',
+    this.installedOn,
+    this.originClinic = '',
+    this.notes = '',
+    this.active = true,
+  });
+
+  final int fdi;
+  final String manufacturer;
+  final String model;
+  final String size;
+  final String lot;
+  final DateTime? installedOn;
+  final String originClinic;
+  final String notes;
+  final bool active;
+}
+
 class Patient {
   const Patient({
     required this.id,
@@ -792,6 +905,7 @@ class Procedure {
     this.sinusLiftTechnique,
     this.sinusLiftNote = '',
     List<String>? linkedProcedureIds,
+    List<String>? linkedImplantIds,
     this.arch,
     this.notes = '',
     List<Visit>? visits,
@@ -804,7 +918,8 @@ class Procedure {
         followUps = followUps ?? [],
         photos = photos ?? [],
         stageNotices = stageNotices ?? [],
-        linkedProcedureIds = linkedProcedureIds ?? const [];
+        linkedProcedureIds = linkedProcedureIds ?? const [],
+        linkedImplantIds = linkedImplantIds ?? const [];
 
   final String id;
   final String patientId;
@@ -815,6 +930,7 @@ class Procedure {
   final SinusLiftTechnique? sinusLiftTechnique;
   final String sinusLiftNote;
   final List<String> linkedProcedureIds;
+  final List<String> linkedImplantIds;
   final Arch? arch;
   final DateTime surgeryDate;
   final String statusLabel;
@@ -852,6 +968,7 @@ class Procedure {
       sinusLiftTechnique: lift ? sinusLiftTechnique ?? this.sinusLiftTechnique : null,
       sinusLiftNote: lift ? sinusLiftNote ?? this.sinusLiftNote : '',
       linkedProcedureIds: linkedProcedureIds,
+      linkedImplantIds: linkedImplantIds,
       surgeryDate: surgeryDate,
       sites: sites ?? this.sites,
       statusLabel: statusLabel ?? this.statusLabel,

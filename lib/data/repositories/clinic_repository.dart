@@ -65,5 +65,9 @@ abstract class ClinicRepository {
 
   void updateProfile(DentistProfile profile);
 
+  InstalledImplant createInstalledImplant(InstalledImplant implant);
+
+  void updateInstalledImplant(InstalledImplant implant);
+
   String allocateId(String prefix);
 }

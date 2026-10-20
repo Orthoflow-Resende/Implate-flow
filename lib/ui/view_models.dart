@@ -236,7 +236,44 @@ class PatientViewModel extends RepositoryViewModel {
 
   List<Procedure> get history => proceduresOf(snapshot.procedures, patientId);
 
+  List<InstalledImplant> get implants => snapshot.implantsFor(patientId);
+
   List<FollowUp> get upcoming => upcomingOf(snapshot.procedures, patientId);
+
+  InstalledImplant addPreexistingImplant(PreexistingImplantDraft draft) {
+    return repository.createInstalledImplant(
+      InstalledImplant(
+        id: repository.allocateId('imp'),
+        patientId: patientId,
+        fdi: draft.fdi,
+        origin: ImplantOrigin.preexisting,
+        manufacturer: draft.manufacturer,
+        model: draft.model,
+        size: draft.size,
+        lot: draft.lot,
+        installedOn: draft.installedOn,
+        originClinic: draft.originClinic,
+        notes: draft.notes,
+      ),
+    );
+  }
+
+  void updateInstalledImplant(InstalledImplant current, PreexistingImplantDraft draft) {
+    repository.updateInstalledImplant(
+      current.copyWith(
+        fdi: draft.fdi,
+        manufacturer: draft.manufacturer,
+        model: draft.model,
+        size: draft.size,
+        lot: draft.lot,
+        installedOn: draft.installedOn,
+        clearInstalledOn: draft.installedOn == null,
+        originClinic: draft.originClinic,
+        notes: draft.notes,
+        active: draft.active,
+      ),
+    );
+  }
 
   Procedure? procedureOf(String followUpId) =>
       procedureOfFollowUp(snapshot.procedures, followUpId);

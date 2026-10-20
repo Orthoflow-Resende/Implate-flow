@@ -7,6 +7,7 @@ import '../core/layout.dart';
 import '../core/mouth_chart.dart';
 import '../core/preset_dropdown.dart';
 import '../graft/graft_form.dart';
+import '../patients/preexisting_implant_sheet.dart';
 import 'new_procedure_viewmodel.dart';
 
 class NewProcedureScreen extends StatelessWidget {
@@ -226,21 +227,42 @@ class _SummaryStep extends StatelessWidget {
               if (viewModel.isProsthesis) ...[
                 const AppSectionHeader(
                   title: 'Implantes vinculados',
-                  subtitle: 'A prótese usa implantes já registrados, sem nova instalação.',
+                  subtitle: 'Opcional. Pode salvar sem vínculo ou cadastrar um preexistente.',
                 ),
                 const SizedBox(height: 8),
                 if (viewModel.linkableImplants.isEmpty)
                   const AppEmptyHint('Nenhum implante deste paciente.')
                 else
-                  for (final procedure in viewModel.linkableImplants) ...[
+                  for (final implant in viewModel.linkableImplants) ...[
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text(procedure.classificationLabel),
-                      subtitle: Text(procedure.teethLabel),
-                      value: viewModel.linkedProcedureIds.contains(procedure.id),
-                      onChanged: (_) => viewModel.toggleLinkedProcedure(procedure.id),
+                      title: Text(implant.title),
+                      subtitle: Text(implant.subtitle),
+                      value: viewModel.linkedImplantIds.contains(implant.id),
+                      onChanged: (_) => viewModel.toggleLinkedImplant(implant.id),
                     ),
                   ],
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      final draft = await showPreexistingImplantSheet(context);
+                      if (draft == null || !context.mounted) return;
+                      viewModel.addPreexistingImplant(
+                        fdi: draft.fdi,
+                        manufacturer: draft.manufacturer,
+                        model: draft.model,
+                        size: draft.size,
+                        lot: draft.lot,
+                        installedOn: draft.installedOn,
+                        originClinic: draft.originClinic,
+                        notes: draft.notes,
+                      );
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Adicionar implante preexistente'),
+                  ),
+                ),
                 const SizedBox(height: 12),
               ],
               if (viewModel.asksSinusLift) ...[
@@ -395,14 +417,14 @@ class _ToothCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final draft = viewModel.drafts[tooth]!;
     final modality = viewModel.modality!;
-    final linked = viewModel.isProsthesis ? viewModel.linkedImplantsForTooth(tooth) : const <Procedure>[];
+    final linked = viewModel.isProsthesis ? viewModel.linkedImplantsForTooth(tooth) : const <InstalledImplant>[];
     final pieceLine = [
       draft.manufacturer,
       draft.model,
     ].where((part) => part.isNotEmpty).join(' ');
     final prosthesisSubtitle = linked.isEmpty
         ? 'Sem implante vinculado nesta região'
-        : linked.map((item) => item.classificationLabel).join(' · ');
+        : linked.map((item) => item.subtitle).join(' · ');
     return AppCollapseCard(
       title: viewModel.subtype == ProcedureSubtype.protocolo ? 'Região $tooth' : 'Dente $tooth',
       subtitle: viewModel.isProsthesis
@@ -418,21 +440,15 @@ class _ToothCard extends StatelessWidget {
                 'Nenhum implante vinculado aqui. Marque um acima, se houver, ou salve sem vínculo.',
               )
             else
-              for (final procedure in linked) ...[
+              for (final implant in linked) ...[
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(procedure.classificationLabel),
+                  title: Text(implant.title),
                   subtitle: Text(
                     [
-                      procedure.teethLabel,
-                      procedure.statusLabel,
-                      for (final site in procedure.sites.where((site) => site.fdi == tooth))
-                        if (site.piece != null)
-                          [
-                            site.piece!.manufacturer,
-                            site.piece!.model,
-                            if (site.piece!.lot.isNotEmpty) 'Lote ${site.piece!.lot}',
-                          ].where((part) => part.isNotEmpty).join(' · '),
+                      implant.subtitle,
+                      if (implant.lot.isNotEmpty) 'Lote ${implant.lot}',
+                      if (implant.notes.isNotEmpty) implant.notes,
                     ].where((part) => part.isNotEmpty).join('\n'),
                   ),
                   isThreeLine: true,

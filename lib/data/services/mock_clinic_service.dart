@@ -107,6 +107,34 @@ ClinicSnapshot buildDemoSnapshot() {
     );
 
     final joaoImplantId = nextId('pro');
+    final joaoImp14 = nextId('imp');
+    final joaoImp16 = nextId('imp');
+    final implants = <InstalledImplant>[
+      InstalledImplant(
+        id: joaoImp14,
+        patientId: joao.id,
+        fdi: 14,
+        origin: ImplantOrigin.procedureRecorded,
+        sourceProcedureId: joaoImplantId,
+        manufacturer: 'Straumann',
+        model: 'BLX',
+        size: '3.75 × 10 mm',
+        lot: 'B25-014',
+        installedOn: shift(-12),
+      ),
+      InstalledImplant(
+        id: joaoImp16,
+        patientId: joao.id,
+        fdi: 16,
+        origin: ImplantOrigin.procedureRecorded,
+        sourceProcedureId: joaoImplantId,
+        manufacturer: 'Straumann',
+        model: 'BLX',
+        size: '4.0 × 10 mm',
+        lot: 'B25-016',
+        installedOn: shift(-12),
+      ),
+    ];
     procedures.add(
       Procedure(
         id: joaoImplantId,
@@ -167,6 +195,7 @@ ClinicSnapshot buildDemoSnapshot() {
         patientId: joao.id,
         modality: Modality.protese,
         subtype: ProcedureSubtype.ponte,
+        linkedImplantIds: [joaoImp14, joaoImp16],
         linkedProcedureIds: [joaoImplantId],
         surgeryDate: shift(78),
         statusLabel: implantStatusLabel(ImplantStatus.protese),
@@ -304,6 +333,7 @@ ClinicSnapshot buildDemoSnapshot() {
     signedIn: false,
     patients: patients,
     procedures: procedures,
+    implants: implants,
     sequence: sequence,
   );
 }

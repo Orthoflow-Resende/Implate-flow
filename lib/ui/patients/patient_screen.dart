@@ -7,6 +7,7 @@ import '../../domain/practice.dart';
 import '../core/layout.dart';
 import '../view_models.dart';
 import 'patient_editor.dart';
+import 'preexisting_implant_sheet.dart';
 
 class PatientScreen extends StatelessWidget {
   const PatientScreen({super.key});
@@ -34,13 +35,8 @@ class PatientScreen extends StatelessWidget {
       );
     }
     final upcoming = viewModel.upcoming;
-    final history = viewModel.history;
     final timeline = viewModel.timeline;
-    final implants = [
-      for (final procedure in history)
-        if (procedure.modality == Modality.implante)
-          for (final site in procedure.pillars) (procedure: procedure, site: site),
-    ];
+    final implants = viewModel.implants;
     return Scaffold(
       appBar: AppBar(
         title: Text(patient.name),
@@ -91,25 +87,50 @@ class PatientScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const AppSectionHeader(title: 'Resumo dos implantes'),
+          const AppSectionHeader(
+            title: 'Implantes',
+            subtitle: 'Inclui cirurgias do sistema e preexistentes informados.',
+          ),
           const SizedBox(height: 8),
           if (implants.isEmpty)
-            const AppEmptyHint('Nenhum pilar registrado.')
+            const AppEmptyHint('Nenhum implante cadastrado.')
           else
-            for (final item in implants) ...[
+            for (final implant in implants) ...[
               AppSurfaceCard(
                 child: ListTile(
-                  title: Text('Dente ${item.site.fdi}'),
-                  subtitle: Text(
-                    '${item.procedure.classificationLabel} · ${item.site.piece?.manufacturer ?? 'Sem fabricante'} ${item.site.piece?.model ?? ''}\n${item.procedure.statusLabel}',
-                  ),
-                  isThreeLine: true,
+                  title: Text(implant.title),
+                  subtitle: Text(implant.subtitle),
+                  isThreeLine: implant.notes.isNotEmpty,
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/procedures/${item.procedure.id}'),
+                  onTap: () async {
+                    if (implant.sourceProcedureId != null) {
+                      context.push('/procedures/${implant.sourceProcedureId}');
+                      return;
+                    }
+                    final draft = await showPreexistingImplantSheet(
+                      context,
+                      initial: implant,
+                      allowInactive: true,
+                    );
+                    if (draft == null || !context.mounted) return;
+                    viewModel.updateInstalledImplant(implant, draft);
+                  },
                 ),
               ),
               const SizedBox(height: 8),
             ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () async {
+                final draft = await showPreexistingImplantSheet(context);
+                if (draft == null || !context.mounted) return;
+                viewModel.addPreexistingImplant(draft);
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Adicionar implante preexistente'),
+            ),
+          ),
           const SizedBox(height: 12),
           const AppSectionHeader(title: 'Próximos encontros'),
           const SizedBox(height: 8),
