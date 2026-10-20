@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
+import '../../domain/models.dart';
+
 class WorkOsIdentity {
   const WorkOsIdentity({
     required this.id,
@@ -45,12 +47,17 @@ class NativeWorkOsAuth implements WorkOsAuth {
       });
       final id = result?['id'];
       final email = result?['email'];
-      final name = result?['name'];
+      final rawName = result?['name'];
       final accessToken = result?['accessToken'] ?? '';
-      if (id == null || email == null || name == null || id.isEmpty || email.isEmpty || accessToken.isEmpty) {
+      if (id == null || email == null || id.isEmpty || email.isEmpty || accessToken.isEmpty) {
         throw const WorkOsAuthException('Não foi possível concluir o login.');
       }
-      return WorkOsIdentity(id: id, email: email, name: name, accessToken: accessToken);
+      return WorkOsIdentity(
+        id: id,
+        email: email,
+        name: sanitizePersonName(rawName),
+        accessToken: accessToken,
+      );
     } on PlatformException catch (error) {
       throw WorkOsAuthException(error.message ?? 'Não foi possível concluir o login.');
     }
@@ -65,18 +72,16 @@ class NativeWorkOsAuth implements WorkOsAuth {
       });
       final id = result?['id'];
       final email = result?['email'];
-      final name = result?['name']?.trim();
       final accessToken = result?['accessToken'] ?? '';
-      if (id == null ||
-          email == null ||
-          name == null ||
-          id.isEmpty ||
-          email.isEmpty ||
-          name.isEmpty ||
-          accessToken.isEmpty) {
+      if (id == null || email == null || id.isEmpty || email.isEmpty || accessToken.isEmpty) {
         return null;
       }
-      return WorkOsIdentity(id: id, email: email, name: name, accessToken: accessToken);
+      return WorkOsIdentity(
+        id: id,
+        email: email,
+        name: sanitizePersonName(result?['name']),
+        accessToken: accessToken,
+      );
     } on PlatformException {
       return null;
     } on MissingPluginException {

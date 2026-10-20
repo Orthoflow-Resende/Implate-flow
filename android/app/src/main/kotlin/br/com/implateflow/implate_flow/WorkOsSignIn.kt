@@ -305,13 +305,24 @@ class WorkOsSignIn(
         private const val KEY_SESSION = "session_id"
 
         private fun registeredName(user: JSONObject, email: String): String {
-            val full = user.optString("name").trim()
+            val full = readableField(user, "name")
             if (full.isNotEmpty()) return full
             val combined = listOf("first_name", "last_name")
-                .map { user.optString(it).trim() }
+                .map { readableField(user, it) }
                 .filter { it.isNotEmpty() }
                 .joinToString(" ")
             return combined.ifEmpty { email }
+        }
+
+        /** optString devolve a literal "null" quando o JSON tem null. */
+        private fun readableField(user: JSONObject, key: String): String {
+            if (user.isNull(key)) return ""
+            val value = user.optString(key).trim()
+            return if (value.equals("null", ignoreCase = true) || value.equals("undefined", ignoreCase = true)) {
+                ""
+            } else {
+                value
+            }
         }
 
         private fun sessionIdFrom(accessToken: String): String? {

@@ -27,9 +27,22 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(profile.name, style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  displayDentistName(profile.name),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 4),
                 Text(profile.email, style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: 12),
+                TextFormField(
+                  initialValue: sanitizePersonName(profile.name),
+                  decoration: const InputDecoration(
+                    labelText: 'Nome',
+                    hintText: 'Nome não informado',
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                  onChanged: viewModel.setName,
+                ),
                 const SizedBox(height: 12),
                 BrazilianPhoneField(initial: profile.phone, onChanged: viewModel.setPhone),
                 const SizedBox(height: 12),

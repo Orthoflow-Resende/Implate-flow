@@ -63,7 +63,7 @@ ClinicSnapshot snapshotFromJson(Map<String, dynamic> json) {
     signedIn: json['signedIn'] as bool? ?? false,
     sequence: json['sequence'] as int? ?? 0,
     profile: DentistProfile(
-      name: json['profile']?['name'] as String? ?? '',
+      name: sanitizePersonName(json['profile']?['name'] as String?),
       email: json['profile']?['email'] as String? ?? '',
       phone: json['profile']?['phone'] as String? ?? '',
       cro: json['profile']?['cro'] as String? ?? '',
