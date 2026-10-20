@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/services/clinic_files.dart';
+import '../../data/services/photo_optimize.dart';
 import '../../domain/models.dart';
 import '../../domain/practice.dart';
 import '../core/app_sheet.dart';
@@ -258,16 +259,58 @@ class ProcedureScreen extends StatelessWidget {
       builder: (context) => const _TextSheet(title: 'Legenda da foto', label: 'Legenda'),
     );
     if (caption == null) return;
-    final id = viewModel.repository.allocateId('fot');
-    final extension = picked.name.contains('.') ? picked.name.split('.').last : 'jpg';
-    final path = await ClinicFiles().copyFile(picked.path, '$id.$extension');
-    viewModel.addPhoto(
-      ClinicPhoto(
-        id: id,
-        caption: caption.trim().isEmpty ? 'Foto' : caption.trim(),
-        path: path,
+    if (!context.mounted) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const PopScope(
+        canPop: false,
+        child: Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Otimizando foto…'),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
+
+    try {
+      final optimized = await PhotoOptimizeService().optimizeFile(picked.path);
+      final id = viewModel.repository.allocateId('fot');
+      final path = await ClinicFiles().saveBytes('$id.${optimized.extension}', optimized.bytes);
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      viewModel.addPhoto(
+        ClinicPhoto(
+          id: id,
+          caption: caption.trim().isEmpty ? 'Foto' : caption.trim(),
+          path: path,
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Não foi possível processar a foto. Tente novamente.'),
+          ),
+        );
+      }
+    } finally {
+      try {
+        await File(picked.path).delete();
+      } catch (_) {}
+    }
   }
 
   Future<void> _visit(

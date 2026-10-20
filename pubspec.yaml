@@ -42,6 +42,7 @@ dependencies:
   printing: ^5.14.2
   path_drawing: ^1.0.1
   xml: ^7.0.0
+  flutter_image_compress: ^2.5.1
 
 dependency_overrides:
   archive: ^4.5.2
