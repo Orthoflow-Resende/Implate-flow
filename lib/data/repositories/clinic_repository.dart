@@ -1,10 +1,13 @@
 import '../../domain/clinic_snapshot.dart';
 import '../../domain/models.dart';
+import '../services/api_feedback.dart';
 
 abstract class ClinicRepository {
   Stream<ClinicSnapshot> watch();
 
   Stream<String> get syncErrors => const Stream<String>.empty();
+
+  Stream<ApiFeedback> get feedback => const Stream<ApiFeedback>.empty();
 
   ClinicSnapshot get current;
 

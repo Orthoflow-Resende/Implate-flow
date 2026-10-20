@@ -3,6 +3,7 @@ import 'dart:math';
 
 import '../../domain/clinic_snapshot.dart';
 import '../../domain/models.dart';
+import '../services/api_feedback.dart';
 import '../services/clinic_api.dart';
 import '../services/clinic_snapshot_codec.dart';
 import 'clinic_repository.dart';
@@ -22,8 +23,10 @@ class ApiClinicRepository implements ClinicRepository {
   final ClinicApi api;
   final MockClinicRepository _local;
   final _failures = StreamController<String>.broadcast();
+  final _notices = StreamController<ApiFeedback>.broadcast();
   var _token = '';
   var _epoch = 0;
+  var _nameBackfilled = false;
   Future<void> _tail = Future<void>.value();
   Future<String?> Function()? _refreshToken;
 
@@ -42,6 +45,9 @@ class ApiClinicRepository implements ClinicRepository {
   Stream<String> get syncErrors => _failures.stream;
 
   @override
+  Stream<ApiFeedback> get feedback => _notices.stream;
+
+  @override
   void bindUnauthorized(Future<String?> Function() refresh) {
     _refreshToken = refresh;
   }
@@ -52,7 +58,7 @@ class ApiClinicRepository implements ClinicRepository {
   @override
   void signIn({required String name, required String email, String accessToken = ''}) {
     if (accessToken.isNotEmpty) _token = accessToken;
-    _local.signIn(name: name, email: email);
+    _local.signIn(name: sanitizePersonName(name), email: email);
   }
 
   @override
@@ -101,7 +107,10 @@ class ApiClinicRepository implements ClinicRepository {
       notifyByEmail: notifyByEmail,
       notifyByPhone: notifyByPhone,
     );
-    _enqueue(() => _authorized((token) => api.createPatient(token, patient)));
+    _enqueue(
+      () => _authorized((token) => api.createPatient(token, patient)),
+      success: 'Paciente salvo com sucesso.',
+    );
     return patient;
   }
 
@@ -110,7 +119,10 @@ class ApiClinicRepository implements ClinicRepository {
     _epoch++;
     _local.updatePatient(patient);
     final saved = _local.current.patients.firstWhere((item) => item.id == patient.id);
-    _enqueue(() => _authorized((token) => api.updatePatient(token, saved)));
+    _enqueue(
+      () => _authorized((token) => api.updatePatient(token, saved)),
+      success: 'Paciente atualizado com sucesso.',
+    );
   }
 
   @override
@@ -118,7 +130,10 @@ class ApiClinicRepository implements ClinicRepository {
     _epoch++;
     _local.saveProcedures(created);
     for (final procedure in created) {
-      _enqueue(() => _authorized((token) => api.createProcedure(token, procedure)));
+      _enqueue(
+        () => _authorized((token) => api.createProcedure(token, procedure)),
+        success: 'Procedimento salvo com sucesso.',
+      );
     }
   }
 
@@ -126,7 +141,10 @@ class ApiClinicRepository implements ClinicRepository {
   void updateProcedure(Procedure procedure) {
     _epoch++;
     _local.updateProcedure(procedure);
-    _enqueue(() => _authorized((token) => api.updateProcedure(token, procedure)));
+    _enqueue(
+      () => _authorized((token) => api.updateProcedure(token, procedure)),
+      success: 'Procedimento atualizado com sucesso.',
+    );
   }
 
   @override
@@ -160,6 +178,7 @@ class ApiClinicRepository implements ClinicRepository {
         Modality.implante;
     _enqueue(
       () => _authorized((token) => api.recordVisit(token, procedureId, visit, modality: modality)),
+      success: 'Consulta registrada com sucesso.',
     );
   }
 
@@ -224,10 +243,13 @@ class ApiClinicRepository implements ClinicRepository {
     _epoch++;
     final previous = _local.current.profile;
     _local.updateProfile(profile);
-    _enqueue(() async {
-      await _authorized((token) => api.updateProfile(token, profile));
-      await _syncLocations(previous.locations, profile.locations);
-    });
+    _enqueue(
+      () async {
+        await _authorized((token) => api.updateProfile(token, profile));
+        await _syncLocations(previous.locations, profile.locations);
+      },
+      success: 'Perfil atualizado com sucesso.',
+    );
   }
 
   List<Visit> _visits(String procedureId) {
@@ -276,14 +298,17 @@ class ApiClinicRepository implements ClinicRepository {
       'patients': chart['patients'],
       'procedures': chart['procedures'],
     });
-    final keptName = snapshot.profile.name.trim().isEmpty ? _local.current.profile.name : snapshot.profile.name;
+    final apiName = sanitizePersonName(snapshot.profile.name);
+    final localName = sanitizePersonName(_local.current.profile.name);
+    final keptName = apiName.isNotEmpty ? apiName : localName;
     final keptEmail = snapshot.profile.email.trim().isEmpty ? _local.current.profile.email : snapshot.profile.email;
-    _local.replaceSnapshot(
-      snapshot.copyWith(
-        profile: snapshot.profile.copyWith(name: keptName, email: keptEmail),
-      ),
-    );
+    final profile = snapshot.profile.copyWith(name: keptName, email: keptEmail);
+    _local.replaceSnapshot(snapshot.copyWith(profile: profile));
     _local.applyOverdueNotices();
+    if (!_nameBackfilled && apiName.isEmpty && keptName.isNotEmpty) {
+      _nameBackfilled = true;
+      _enqueue(() => _authorized((token) => api.updateProfile(token, profile)));
+    }
   }
 
   Future<T> _authorized<T>(Future<T> Function(String token) call) async {
@@ -301,12 +326,19 @@ class ApiClinicRepository implements ClinicRepository {
     }
   }
 
-  Future<void> _enqueue(Future<void> Function() job) {
+  Future<void> _enqueue(Future<void> Function() job, {String? success}) {
     _tail = _tail.then((_) async {
       try {
         await job();
+        if (success != null) {
+          _notices.add(ApiFeedback.success(success));
+        }
       } catch (error) {
-        _failures.add(error is ClinicApiException ? error.message : 'Não foi possível sincronizar o prontuário.');
+        final message = error is ClinicApiException
+            ? error.message
+            : friendlyApiMessage(0);
+        _failures.add(message);
+        _notices.add(ApiFeedback.error(message));
         await _reconcile();
       }
     });

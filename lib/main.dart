@@ -10,6 +10,7 @@ import 'data/services/workos_auth.dart';
 import 'domain/clinic_snapshot.dart';
 import 'domain/models.dart';
 import 'routing/router.dart';
+import 'ui/core/api_feedback_host.dart';
 import 'ui/core/app_safe_area.dart';
 import 'ui/core/layout.dart';
 import 'ui/view_models.dart';
@@ -74,7 +75,9 @@ class _ImplateAppState extends State<ImplateApp> {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       builder: (context, child) {
-        return AppSafeArea(child: child ?? const SizedBox.shrink());
+        return ApiFeedbackHost(
+          child: AppSafeArea(child: child ?? const SizedBox.shrink()),
+        );
       },
       routerConfig: _router,
     );

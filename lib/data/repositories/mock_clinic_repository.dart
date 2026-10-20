@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../domain/clinic_snapshot.dart';
 import '../../domain/models.dart';
 import '../../domain/practice.dart';
+import '../services/api_feedback.dart';
 import '../services/mock_clinic_service.dart';
 import 'clinic_repository.dart';
 
@@ -47,6 +48,9 @@ class MockClinicRepository implements ClinicRepository {
   Stream<String> get syncErrors => const Stream<String>.empty();
 
   @override
+  Stream<ApiFeedback> get feedback => const Stream<ApiFeedback>.empty();
+
+  @override
   void bindUnauthorized(Future<String?> Function() refresh) {}
 
   @override
@@ -83,10 +87,15 @@ class MockClinicRepository implements ClinicRepository {
 
   @override
   void signIn({required String name, required String email, String accessToken = ''}) {
+    final cleaned = sanitizePersonName(name);
+    final kept = sanitizePersonName(_snapshot.profile.name);
     _emit(
       _snapshot.copyWith(
         signedIn: true,
-        profile: _snapshot.profile.copyWith(name: name, email: email),
+        profile: _snapshot.profile.copyWith(
+          name: cleaned.isNotEmpty ? cleaned : kept,
+          email: email,
+        ),
       ),
     );
   }

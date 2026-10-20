@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 
 import '../config/app_config.dart';
 import '../data/repositories/clinic_repository.dart';
+import '../data/services/api_feedback.dart';
 import '../data/services/clinic_files.dart';
 import '../data/services/clinic_pdfs.dart';
 import '../data/services/workos_auth.dart';
@@ -27,18 +28,31 @@ class RepositoryViewModel extends ChangeNotifier {
       loadError = message;
       notifyListeners();
     });
+    _feedback = repository.feedback.listen((notice) {
+      feedback = notice;
+      notifyListeners();
+    });
   }
 
   final ClinicRepository repository;
   late ClinicSnapshot snapshot = repository.current;
   String? loadError;
+  ApiFeedback? feedback;
   late final StreamSubscription<ClinicSnapshot> _subscription;
   late final StreamSubscription<String> _syncErrors;
+  late final StreamSubscription<ApiFeedback> _feedback;
+
+  void clearFeedback() {
+    if (feedback == null) return;
+    feedback = null;
+    notifyListeners();
+  }
 
   @override
   void dispose() {
     _subscription.cancel();
     _syncErrors.cancel();
+    _feedback.cancel();
     super.dispose();
   }
 }
@@ -582,6 +596,12 @@ class ProfileViewModel extends RepositoryViewModel {
   ProfileViewModel(super.repository);
 
   DentistProfile get profile => snapshot.profile;
+
+  void setName(String value) {
+    final cleaned = sanitizePersonName(value);
+    if (cleaned.isEmpty || cleaned == sanitizePersonName(profile.name)) return;
+    repository.updateProfile(profile.copyWith(name: cleaned));
+  }
 
   void setPhone(String value) {
     if (brazilianPhoneIssue(value) != null) return;

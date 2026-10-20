@@ -469,6 +469,20 @@ class CareLocation {
   }
 }
 
+/// WorkOS/Android às vezes entregam a literal `"null"`; trata como ausente.
+String sanitizePersonName(String? value) {
+  final trimmed = value?.trim() ?? '';
+  if (trimmed.isEmpty) return '';
+  final lower = trimmed.toLowerCase();
+  if (lower == 'null' || lower == 'undefined') return '';
+  return trimmed;
+}
+
+String displayDentistName(String? value) {
+  final cleaned = sanitizePersonName(value);
+  return cleaned.isEmpty ? 'Nome não informado' : cleaned;
+}
+
 class DentistProfile {
   const DentistProfile({
     required this.name,

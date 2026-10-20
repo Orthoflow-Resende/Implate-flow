@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../domain/models.dart';
+import 'api_feedback.dart';
 
 class ClinicApiException implements Exception {
   const ClinicApiException(this.statusCode, this.message);
@@ -195,7 +196,10 @@ class ClinicApi {
   Future<Object?> _send(String method, String path, {required String token, Object? body}) async {
     final response = await _transport.send(method: method, path: path, body: body, token: token);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ClinicApiException(response.statusCode, _message(response.body));
+      throw ClinicApiException(
+        response.statusCode,
+        friendlyApiMessage(response.statusCode, body: response.body),
+      );
     }
     return response.body;
   }
@@ -339,10 +343,3 @@ String? _contentType(String path) {
   return null;
 }
 
-String _message(Object? body) {
-  if (body is Map && body['error'] is Map) {
-    final message = (body['error'] as Map)['message'];
-    if (message is String && message.isNotEmpty) return message;
-  }
-  return 'Não foi possível sincronizar o prontuário.';
-}
