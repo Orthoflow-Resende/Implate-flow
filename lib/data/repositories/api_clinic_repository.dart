@@ -138,7 +138,8 @@ class ApiClinicRepository implements ClinicRepository {
       try {
         await _authorized((token) => api.uploadPhoto(token, procedureId, photo));
       } on ClinicApiException catch (error) {
-        if (error.statusCode == 503 || error.statusCode == 0) return;
+        // Sem object store a API responde 503; a foto permanece só no aparelho.
+        if (error.statusCode == 503) return;
         rethrow;
       }
     });
@@ -154,7 +155,12 @@ class ApiClinicRepository implements ClinicRepository {
     final before = _visits(procedureId).length;
     _local.addVisit(procedureId: procedureId, note: note, statusLabel: statusLabel);
     final visit = _visits(procedureId).elementAt(before);
-    _enqueue(() => _authorized((token) => api.recordVisit(token, procedureId, visit)));
+    final modality =
+        _local.current.procedures.where((item) => item.id == procedureId).firstOrNull?.modality ??
+        Modality.implante;
+    _enqueue(
+      () => _authorized((token) => api.recordVisit(token, procedureId, visit, modality: modality)),
+    );
   }
 
   @override
@@ -181,7 +187,11 @@ class ApiClinicRepository implements ClinicRepository {
     }
     if (updated != null && updated.visits.length > before) {
       final visit = updated.visits[before];
-      _enqueue(() => _authorized((token) => api.recordVisit(token, updated.id, visit)));
+      _enqueue(
+        () => _authorized(
+          (token) => api.recordVisit(token, updated.id, visit, modality: updated.modality),
+        ),
+      );
     }
   }
 

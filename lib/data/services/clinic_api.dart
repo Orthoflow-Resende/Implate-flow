@@ -80,7 +80,12 @@ class ClinicApi {
     );
   }
 
-  Future<void> recordVisit(String token, String procedureId, Visit visit) async {
+  Future<void> recordVisit(
+    String token,
+    String procedureId,
+    Visit visit, {
+    required Modality modality,
+  }) async {
     await _send(
       'POST',
       '/v1/procedures/$procedureId/visits',
@@ -89,7 +94,7 @@ class ClinicApi {
         'id': visit.id,
         'date': _isoDate(visit.date),
         'note': visit.note,
-        'statusLabel': visit.statusLabel,
+        'statusLabel': clinicalStatusWire(visit.statusLabel, modality),
       },
     );
   }
@@ -236,11 +241,12 @@ class IoClinicTransport implements ClinicTransport {
   Future<void> putBytes(String url, List<int> bytes, String contentType) async {
     final request = await _client.putUrl(Uri.parse(url));
     request.headers.set(HttpHeaders.contentTypeHeader, contentType);
+    request.contentLength = bytes.length;
     request.add(bytes);
     final response = await request.close().timeout(const Duration(seconds: 30));
     await response.drain<void>();
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw const ClinicApiException(0, 'Não foi possível enviar a foto.');
+      throw ClinicApiException(response.statusCode, 'Não foi possível enviar a foto.');
     }
   }
 }
@@ -276,7 +282,7 @@ Map<String, Object?> _procedureBody(Procedure procedure, {required bool includeI
               'reminderDaysBefore': followUp.reminderDaysBefore,
             },
         ],
-      'statusLabel': procedure.statusLabel,
+      'statusLabel': clinicalStatusWire(procedure.statusLabel, procedure.modality),
       'notes': procedure.notes,
       'associatedGraft': procedure.associatedGraft,
       'sinusLift': procedure.sinusLift,

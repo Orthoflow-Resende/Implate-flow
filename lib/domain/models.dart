@@ -305,6 +305,40 @@ String graftStatusLabel(GraftStatus status) => switch (status) {
       GraftStatus.intercorrencia => 'Intercorrência',
     };
 
+/// Forma usada pela API (`planejado`). Aceita o nome do enum ou o rótulo da UI.
+String clinicalStatusWire(String statusLabel, Modality modality) {
+  if (modality == Modality.enxerto) {
+    for (final status in GraftStatus.values) {
+      if (status.name == statusLabel || graftStatusLabel(status) == statusLabel) {
+        return status.name;
+      }
+    }
+  } else {
+    for (final status in ImplantStatus.values) {
+      if (status.name == statusLabel || implantStatusLabel(status) == statusLabel) {
+        return status.name;
+      }
+    }
+  }
+  return statusLabel;
+}
+
+/// Rótulo da UI a partir do valor da API ou do rótulo já local.
+String clinicalStatusDisplay(String statusLabel, Modality modality) {
+  if (modality == Modality.enxerto) {
+    for (final status in GraftStatus.values) {
+      if (status.name == statusLabel) return graftStatusLabel(status);
+      if (graftStatusLabel(status) == statusLabel) return statusLabel;
+    }
+  } else {
+    for (final status in ImplantStatus.values) {
+      if (status.name == statusLabel) return implantStatusLabel(status);
+      if (implantStatusLabel(status) == statusLabel) return statusLabel;
+    }
+  }
+  return statusLabel;
+}
+
 String graftMaterialChoiceLabel(GraftMaterialChoice choice) => switch (choice) {
       GraftMaterialChoice.autogeno => 'Osso autógeno',
       GraftMaterialChoice.liofilizado => 'Osso liofilizado',

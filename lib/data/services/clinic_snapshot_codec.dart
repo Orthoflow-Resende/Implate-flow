@@ -177,10 +177,11 @@ Map<String, dynamic> _procedureToJson(Procedure procedure) {
 }
 
 Procedure _procedureFromJson(Map<String, dynamic> json) {
+  final modality = Modality.values.byName(json['modality'] as String);
   return Procedure(
     id: json['id'] as String,
     patientId: json['patientId'] as String,
-    modality: Modality.values.byName(json['modality'] as String),
+    modality: modality,
     subtype: json['subtype'] == null
         ? null
         : ProcedureSubtype.values.byName(json['subtype'] as String),
@@ -195,7 +196,7 @@ Procedure _procedureFromJson(Map<String, dynamic> json) {
     ],
     arch: json['arch'] == null ? null : Arch.values.byName(json['arch'] as String),
     surgeryDate: _parseDate(json['surgeryDate'] as String),
-    statusLabel: json['statusLabel'] as String? ?? '',
+    statusLabel: clinicalStatusDisplay(json['statusLabel'] as String? ?? '', modality),
     notes: json['notes'] as String? ?? '',
     certificateIssuedAt: _parseDateOrNull(json['certificateIssuedAt'] as String?),
     certificatePdfPath: json['certificatePdfPath'] as String?,
@@ -219,7 +220,7 @@ Procedure _procedureFromJson(Map<String, dynamic> json) {
           id: visit['id'] as String,
           date: _parseDate(visit['date'] as String),
           note: visit['note'] as String? ?? '',
-          statusLabel: visit['statusLabel'] as String? ?? '',
+          statusLabel: clinicalStatusDisplay(visit['statusLabel'] as String? ?? '', modality),
         ),
     ],
     followUps: [
