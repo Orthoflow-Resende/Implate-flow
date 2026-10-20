@@ -78,7 +78,21 @@ class SessionViewModel extends RepositoryViewModel {
   bool busy = false;
   String? error;
 
+  /// Evita reabrir o AuthKit em loop após cancelamento/erro (F3S-517).
+  bool _authKitPresented = false;
+
   bool get signedIn => snapshot.signedIn;
+
+  /// Abre o AuthKit uma vez após restaurar a sessão, se ainda não houver login.
+  Future<void> presentAuthKitIfNeeded() async {
+    await restored;
+    if (signedIn || busy || _authKitPresented) return;
+    _authKitPresented = true;
+    await signIn();
+  }
+
+  /// Nova tentativa explícita após cancelamento ou falha.
+  Future<void> retryAuthKit() => signIn();
 
   Future<void> signIn() async {
     if (busy) return;

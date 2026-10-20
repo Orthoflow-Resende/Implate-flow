@@ -1,60 +1,86 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/layout.dart';
 import '../view_models.dart';
 
-class LoginScreen extends StatelessWidget {
+/// Splash discreto enquanto o AuthKit do sistema abre (F3S-517).
+/// Sem botão "Entrar"; cancelamento/erro mostram "Tentar novamente".
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<SessionViewModel>().presentAuthKitIfNeeded();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<SessionViewModel>();
     final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context).textTheme;
+
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: ListView(
+            child: Padding(
               padding: const EdgeInsets.all(24),
-              children: [
-                const SizedBox(height: 48),
-                Icon(Icons.health_and_safety_outlined, size: 48, color: scheme.primary),
-                const SizedBox(height: 16),
-                Text(
-                  'implante flow',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'O dentista entra pelo AuthKit, no navegador do sistema. O prontuário continua neste aparelho.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 28),
-                AppSurfaceCard(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (viewModel.error != null) ...[
-                        Text(viewModel.error!, style: TextStyle(color: scheme.error)),
-                        const SizedBox(height: 16),
-                      ],
-                      FilledButton(
-                        onPressed: viewModel.busy ? null : viewModel.signIn,
-                        child: viewModel.busy
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Entrar'),
-                      ),
-                    ],
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/branding/logo.png',
+                    height: 96,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  Text(
+                    'implante flow',
+                    textAlign: TextAlign.center,
+                    style: theme.headlineMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  if (viewModel.error != null) ...[
+                    const SizedBox(height: 28),
+                    Text(
+                      viewModel.error!,
+                      textAlign: TextAlign.center,
+                      style: theme.bodyMedium?.copyWith(color: scheme.error),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: viewModel.busy ? null : viewModel.retryAuthKit,
+                      child: viewModel.busy
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Tentar novamente'),
+                    ),
+                  ] else if (viewModel.busy) ...[
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: scheme.onSurface.withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
