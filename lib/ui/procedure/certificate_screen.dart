@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/certificate.dart';
@@ -14,6 +15,24 @@ class CertificateScreen extends StatelessWidget {
     final viewModel = context.watch<CertificateViewModel>();
     final procedure = viewModel.procedure;
     final patient = viewModel.patient;
+    if (procedure == null || patient == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Certificado')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Procedimento não encontrado.',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              TextButton(onPressed: () => context.pop(), child: const Text('Voltar')),
+            ],
+          ),
+        ),
+      );
+    }
     final missing = missingCertificateFields(
       profile: viewModel.profile,
       patient: patient,

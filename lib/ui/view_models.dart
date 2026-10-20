@@ -217,7 +217,8 @@ class PatientViewModel extends RepositoryViewModel {
 
   final String patientId;
 
-  Patient get patient => snapshot.patients.firstWhere((item) => item.id == patientId);
+  Patient? get patient =>
+      snapshot.patients.where((item) => item.id == patientId).firstOrNull;
 
   List<Procedure> get history => proceduresOf(snapshot.procedures, patientId);
 
@@ -253,12 +254,14 @@ class PatientViewModel extends RepositoryViewModel {
   void updatePatient(Patient patient) => repository.updatePatient(patient);
 
   Future<void> exportChart() async {
+    final current = patient;
+    if (current == null) return;
     final bytes = await buildPatientChartPdf(
       profile: snapshot.profile,
-      patient: patient,
+      patient: current,
       history: history,
     );
-    await Printing.sharePdf(bytes: bytes, filename: 'prontuario-${patient.id}.pdf');
+    await Printing.sharePdf(bytes: bytes, filename: 'prontuario-${current.id}.pdf');
   }
 }
 
@@ -484,9 +487,14 @@ class ProcedureViewModel extends RepositoryViewModel {
 
   final String procedureId;
 
-  Procedure get procedure => snapshot.procedures.firstWhere((item) => item.id == procedureId);
+  Procedure? get procedure =>
+      snapshot.procedures.where((item) => item.id == procedureId).firstOrNull;
 
-  Patient get patient => snapshot.patients.firstWhere((item) => item.id == procedure.patientId);
+  Patient? get patient {
+    final current = procedure;
+    if (current == null) return null;
+    return snapshot.patients.where((item) => item.id == current.patientId).firstOrNull;
+  }
 
   void addPhoto(ClinicPhoto photo) => repository.addPhoto(procedureId, photo);
 
@@ -509,7 +517,9 @@ class ProcedureViewModel extends RepositoryViewModel {
   }
 
   void saveNotes(String notes) {
-    repository.updateProcedure(procedure.copyWith(notes: notes));
+    final current = procedure;
+    if (current == null) return;
+    repository.updateProcedure(current.copyWith(notes: notes));
   }
 
   void reprocessNotice(String noticeId) =>
@@ -521,8 +531,10 @@ class ProcedureViewModel extends RepositoryViewModel {
     SinusLiftTechnique? sinusLiftTechnique,
     String sinusLiftNote = '',
   }) {
+    final current = procedure;
+    if (current == null) return;
     repository.updateProcedure(
-      procedure.copyWith(
+      current.copyWith(
         sites: sites,
         sinusLift: sinusLift,
         sinusLiftTechnique: sinusLiftTechnique,
@@ -537,24 +549,32 @@ class CertificateViewModel extends RepositoryViewModel {
 
   final String procedureId;
 
-  Procedure get procedure => snapshot.procedures.firstWhere((item) => item.id == procedureId);
+  Procedure? get procedure =>
+      snapshot.procedures.where((item) => item.id == procedureId).firstOrNull;
 
-  Patient get patient => snapshot.patients.firstWhere((item) => item.id == procedure.patientId);
+  Patient? get patient {
+    final current = procedure;
+    if (current == null) return null;
+    return snapshot.patients.where((item) => item.id == current.patientId).firstOrNull;
+  }
 
   DentistProfile get profile => snapshot.profile;
 
   Future<void> issue() async {
+    final currentProcedure = procedure;
+    final currentPatient = patient;
+    if (currentProcedure == null || currentPatient == null) return;
     final bytes = await buildCertificatePdf(
       profile: profile,
-      patient: patient,
-      procedure: procedure,
+      patient: currentPatient,
+      procedure: currentProcedure,
     );
     final path = await ClinicFiles().saveBytes(
-      'certificado-${procedure.id}.pdf',
+      'certificado-${currentProcedure.id}.pdf',
       bytes,
     );
     repository.issueCertificate(procedureId, pdfPath: path);
-    await Printing.sharePdf(bytes: bytes, filename: 'certificado-${procedure.id}.pdf');
+    await Printing.sharePdf(bytes: bytes, filename: 'certificado-${currentProcedure.id}.pdf');
   }
 }
 

@@ -15,6 +15,24 @@ class PatientScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<PatientViewModel>();
     final patient = viewModel.patient;
+    if (patient == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Paciente')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Paciente não encontrado.',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              TextButton(onPressed: () => context.pop(), child: const Text('Voltar')),
+            ],
+          ),
+        ),
+      );
+    }
     final upcoming = viewModel.upcoming;
     final history = viewModel.history;
     final timeline = viewModel.timeline;
@@ -143,6 +161,7 @@ class PatientScreen extends StatelessWidget {
 
   Future<void> _edit(BuildContext context, PatientViewModel viewModel) async {
     final patient = viewModel.patient;
+    if (patient == null) return;
     final draft = await editPatientDraft(
       context,
       title: 'Editar paciente',

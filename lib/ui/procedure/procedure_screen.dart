@@ -21,6 +21,24 @@ class ProcedureScreen extends StatelessWidget {
     final viewModel = context.watch<ProcedureViewModel>();
     final procedure = viewModel.procedure;
     final patient = viewModel.patient;
+    if (procedure == null || patient == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Procedimento')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Procedimento não encontrado.',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              TextButton(onPressed: () => context.pop(), child: const Text('Voltar')),
+            ],
+          ),
+        ),
+      );
+    }
     final events = <({DateTime date, String title, String detail})>[
       (date: procedure.surgeryDate, title: 'Cirurgia', detail: procedure.classificationLabel),
       for (final visit in procedure.visits) (date: visit.date, title: 'Consulta', detail: visit.note),
@@ -196,12 +214,14 @@ class ProcedureScreen extends StatelessWidget {
   }
 
   Future<void> _editNotes(BuildContext context, ProcedureViewModel viewModel) async {
+    final procedure = viewModel.procedure;
+    if (procedure == null) return;
     final notes = await showAppSheet<String>(
       context: context,
       builder: (context) => _TextSheet(
         title: 'Notas do procedimento',
         label: 'Observação',
-        initial: viewModel.procedure.notes,
+        initial: procedure.notes,
         maxLines: 5,
       ),
     );
@@ -255,10 +275,12 @@ class ProcedureScreen extends StatelessWidget {
     ProcedureViewModel viewModel,
     Procedure procedure,
   ) async {
+    final patient = viewModel.patient;
+    if (patient == null) return;
     final result = await _consultationDialog(
       context,
       procedure,
-      patient: viewModel.patient,
+      patient: patient,
       title: 'Registrar consulta',
     );
     if (result == null) return;
@@ -271,11 +293,13 @@ class ProcedureScreen extends StatelessWidget {
     Procedure procedure,
     String followUpId,
   ) async {
+    final patient = viewModel.patient;
+    if (patient == null) return;
     final followUp = procedure.followUps.firstWhere((item) => item.id == followUpId);
     final result = await _consultationDialog(
       context,
       procedure,
-      patient: viewModel.patient,
+      patient: patient,
       title: 'Registrar retorno',
       withAttendance: true,
       showStatus: followUp.reason != ReturnReason.sutura,
