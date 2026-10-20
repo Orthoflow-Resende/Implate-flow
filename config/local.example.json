@@ -1,4 +1,5 @@
 {
   "WORKOS_CLIENT_ID": "client_...",
-  "WORKOS_REDIRECT_URI": "br.com.implateflow://auth/callback"
+  "WORKOS_REDIRECT_URI": "br.com.implateflow://auth/callback",
+  "API_BASE_URL": "http://127.0.0.1:3000"
 }
