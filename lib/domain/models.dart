@@ -868,11 +868,7 @@ class ImplantPiece {
   final String anvisa;
 
   bool get certificateReady =>
-      manufacturer.isNotEmpty &&
-      model.isNotEmpty &&
-      size.isNotEmpty &&
-      manufacturedOn != null &&
-      expiresOn != null;
+      manufacturer.isNotEmpty && model.isNotEmpty && size.isNotEmpty;
 }
 
 class GraftMaterial {
@@ -912,11 +908,10 @@ class GraftMaterial {
               model.isNotEmpty &&
               productType.isNotEmpty &&
               presentation != null &&
-              expiresOn != null &&
               (presentation != GraftPresentation.po || granulometry.isNotEmpty) &&
               (presentation != GraftPresentation.bloco || granulometry.isEmpty),
         GraftOrigin.biomaterial =>
-          manufacturer.isNotEmpty && model.isNotEmpty && expiresOn != null,
+          manufacturer.isNotEmpty && model.isNotEmpty,
         GraftOrigin.autogeno => donorSite.isNotEmpty,
       };
 }
