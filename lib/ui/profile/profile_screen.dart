@@ -8,8 +8,42 @@ import '../core/brazilian_phone_field.dart';
 import '../core/layout.dart';
 import '../view_models.dart';
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key, this.focusField});
+
+  final String? focusField;
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _croFocus = FocusNode();
+  final _croKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.focusField == 'cro') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final target = _croKey.currentContext;
+        if (target != null) {
+          Scrollable.ensureVisible(
+            target,
+            duration: const Duration(milliseconds: 250),
+            alignment: 0.1,
+          );
+        }
+        _croFocus.requestFocus();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _croFocus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +51,7 @@ class ProfileScreen extends StatelessWidget {
     final session = context.watch<SessionViewModel>();
     final profile = viewModel.profile;
     final scheme = Theme.of(context).colorScheme;
+    final highlightCro = widget.focusField == 'cro';
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil')),
       body: ListView(
@@ -47,8 +82,14 @@ class ProfileScreen extends StatelessWidget {
                 BrazilianPhoneField(initial: profile.phone, onChanged: viewModel.setPhone),
                 const SizedBox(height: 12),
                 TextFormField(
+                  key: _croKey,
+                  focusNode: _croFocus,
                   initialValue: profile.cro,
-                  decoration: const InputDecoration(labelText: 'CRO/UF'),
+                  decoration: InputDecoration(
+                    labelText: 'CRO/UF',
+                    hintText: 'SP 12345',
+                    helperText: highlightCro ? 'Necessário para emitir certificado' : null,
+                  ),
                   onChanged: viewModel.setCro,
                 ),
               ],

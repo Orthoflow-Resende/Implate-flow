@@ -146,7 +146,7 @@ GoRouter buildRouter(SessionViewModel session) {
         path: '/profile',
         builder: (context, state) => ChangeNotifierProvider(
           create: (context) => ProfileViewModel(context.read<ClinicRepository>()),
-          child: const ProfileScreen(),
+          child: ProfileScreen(focusField: state.uri.queryParameters['focus']),
         ),
       ),
     ],

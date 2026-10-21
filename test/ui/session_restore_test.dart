@@ -139,7 +139,7 @@ const _chart = {
     'name': 'Ana Costa',
     'email': 'ana@example.com',
     'phone': '',
-    'cro': '12345/RJ',
+    'cro': 'RJ 12345',
     'reminderEnabled': true,
     'reminderDaysBefore': 15,
     'emailChannel': true,

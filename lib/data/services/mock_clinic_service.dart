@@ -320,7 +320,7 @@ ClinicSnapshot buildDemoSnapshot() {
       name: 'Dra. Helena Vargas',
       email: 'helena@consultorio.exemplo',
       phone: '1133334040',
-      cro: 'CRO-SP 00000',
+      cro: 'SP 00000',
       locations: [
         CareLocation(
           id: centro,
