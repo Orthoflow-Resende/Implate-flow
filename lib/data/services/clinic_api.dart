@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../../domain/certificate.dart';
 import '../../domain/models.dart';
 import 'api_feedback.dart';
 
@@ -117,7 +118,7 @@ class ClinicApi {
       body: {
         'name': profile.name,
         'phone': profile.phone,
-        'cro': profile.cro,
+        'cro': normalizeCro(profile.cro) ?? profile.cro,
         'reminderEnabled': profile.reminderEnabled,
         'reminderDaysBefore': profile.reminderDaysBefore,
         'emailChannel': profile.emailChannel,
@@ -199,8 +200,21 @@ class ClinicApi {
     await _send('POST', '/v1/locations/$locationId/reactivate', token: token);
   }
 
-  Future<void> issueCertificate(String token, String procedureId) async {
-    await _send('POST', '/v1/procedures/$procedureId/certificates', token: token);
+  Future<void> issueCertificate(
+    String token,
+    String procedureId, {
+    int copies = 1,
+    String? locationId,
+  }) async {
+    await _send(
+      'POST',
+      '/v1/procedures/$procedureId/certificates',
+      token: token,
+      body: {
+        'copies': copies == 2 ? 2 : 1,
+        if (locationId != null && locationId.isNotEmpty) 'locationId': locationId,
+      },
+    );
   }
 
   Future<void> uploadPhoto(String token, String procedureId, ClinicPhoto photo) async {

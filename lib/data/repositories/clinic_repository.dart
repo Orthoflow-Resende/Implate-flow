@@ -57,7 +57,12 @@ abstract class ClinicRepository {
     required ReturnStatus returnStatus,
   });
 
-  void issueCertificate(String procedureId, {String? pdfPath});
+  void issueCertificate(
+    String procedureId, {
+    String? pdfPath,
+    int copies = 1,
+    String? locationId,
+  });
 
   void reprocessStageNotice({required String procedureId, required String noticeId});
 

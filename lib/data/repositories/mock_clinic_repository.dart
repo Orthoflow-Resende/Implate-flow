@@ -347,7 +347,12 @@ class MockClinicRepository implements ClinicRepository {
   }
 
   @override
-  void issueCertificate(String procedureId, {String? pdfPath}) {
+  void issueCertificate(
+    String procedureId, {
+    String? pdfPath,
+    int copies = 1,
+    String? locationId,
+  }) {
     _replace(procedureId, (procedure) {
       return procedure.copyWith(
         certificateIssuedAt: DateTime.now(),

@@ -9,6 +9,7 @@ import '../data/services/api_feedback.dart';
 import '../data/services/clinic_files.dart';
 import '../data/services/clinic_pdfs.dart';
 import '../data/services/workos_auth.dart';
+import '../domain/certificate.dart';
 import '../domain/clinic_snapshot.dart';
 import '../domain/models.dart';
 import '../domain/practice.dart';
@@ -621,6 +622,8 @@ class CertificateViewModel extends RepositoryViewModel {
   CertificateViewModel(super.repository, {required this.procedureId});
 
   final String procedureId;
+  bool emitTwoCopies = false;
+  String? selectedLocationId;
 
   Procedure? get procedure =>
       snapshot.procedures.where((item) => item.id == procedureId).firstOrNull;
@@ -633,20 +636,50 @@ class CertificateViewModel extends RepositoryViewModel {
 
   DentistProfile get profile => snapshot.profile;
 
+  List<CareLocation> get careLocations {
+    final currentPatient = patient;
+    if (currentPatient == null) return const [];
+    return certificateCareLocations(profile: profile, patient: currentPatient);
+  }
+
+  CareLocation? get selectedLocation => resolveCertificateLocation(
+        candidates: careLocations,
+        selectedLocationId: selectedLocationId,
+      );
+
+  void setEmitTwoCopies(bool value) {
+    emitTwoCopies = value;
+    notifyListeners();
+  }
+
+  void selectLocation(String? locationId) {
+    selectedLocationId = locationId;
+    notifyListeners();
+  }
+
   Future<void> issue() async {
     final currentProcedure = procedure;
     final currentPatient = patient;
-    if (currentProcedure == null || currentPatient == null) return;
+    final location = selectedLocation;
+    if (currentProcedure == null || currentPatient == null || location == null) return;
+    final copies = emitTwoCopies ? 2 : 1;
     final bytes = await buildCertificatePdf(
       profile: profile,
       patient: currentPatient,
       procedure: currentProcedure,
+      location: location,
+      copies: copies,
     );
     final path = await ClinicFiles().saveBytes(
       'certificado-${currentProcedure.id}.pdf',
       bytes,
     );
-    repository.issueCertificate(procedureId, pdfPath: path);
+    repository.issueCertificate(
+      procedureId,
+      pdfPath: path,
+      copies: copies,
+      locationId: location.id,
+    );
     await Printing.sharePdf(bytes: bytes, filename: 'certificado-${currentProcedure.id}.pdf');
   }
 }

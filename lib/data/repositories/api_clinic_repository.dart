@@ -216,12 +216,29 @@ class ApiClinicRepository implements ClinicRepository {
   }
 
   @override
-  void issueCertificate(String procedureId, {String? pdfPath}) {
+  void issueCertificate(
+    String procedureId, {
+    String? pdfPath,
+    int copies = 1,
+    String? locationId,
+  }) {
     _epoch++;
-    _local.issueCertificate(procedureId, pdfPath: pdfPath);
+    _local.issueCertificate(
+      procedureId,
+      pdfPath: pdfPath,
+      copies: copies,
+      locationId: locationId,
+    );
     _enqueue(() async {
       try {
-        await _authorized((token) => api.issueCertificate(token, procedureId));
+        await _authorized(
+          (token) => api.issueCertificate(
+            token,
+            procedureId,
+            copies: copies,
+            locationId: locationId,
+          ),
+        );
       } on ClinicApiException catch (error) {
         if (error.statusCode == 503) return;
         rethrow;

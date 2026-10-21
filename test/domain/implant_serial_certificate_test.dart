@@ -5,7 +5,7 @@ import 'package:implate_flow/domain/models.dart';
 void main() {
   test('o certificado não exige número de série', () {
     final missing = missingCertificateFields(
-      profile: const DentistProfile(name: 'Dra. Helena', email: 'h@x', cro: 'CRO-SP 1'),
+      profile: const DentistProfile(name: 'Dra. Helena', email: 'h@x', cro: 'SP 1'),
       patient: Patient(
         id: 'pac-1',
         name: 'Ana',
