@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models.dart';
+import '../core/catalog_scope.dart';
 import '../core/preset_dropdown.dart';
 import '../new_procedure/new_procedure_viewmodel.dart';
 
@@ -72,6 +73,7 @@ class _GraftCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    watchClinicalCatalog(context);
     final choice = graft.materialChoice;
     final product = graftProductOf(graft.manufacturer, graft.model);
     final presentations = choice == GraftMaterialChoice.autogeno

@@ -5,7 +5,9 @@ import '../../domain/clinic_snapshot.dart';
 import '../../domain/models.dart';
 import '../services/api_feedback.dart';
 import '../services/clinic_api.dart';
+import '../services/clinical_catalog_codec.dart';
 import '../services/clinic_snapshot_codec.dart';
+import '../services/local_catalog_store.dart';
 import 'clinic_repository.dart';
 import 'mock_clinic_repository.dart';
 
@@ -13,15 +15,22 @@ class ApiClinicRepository implements ClinicRepository {
   ApiClinicRepository({
     required this.api,
     required ClinicSnapshot initial,
+    ClinicalCatalog? initialCatalog,
     Future<void> Function(ClinicSnapshot snapshot)? persist,
-  }) : _local = MockClinicRepository.fromSnapshot(
+    CatalogStore? catalogStore,
+  })  : _catalog = initialCatalog ?? bundledClinicalCatalog,
+        _catalogStore = catalogStore ?? LocalCatalogStore(),
+        _local = MockClinicRepository.fromSnapshot(
           initial,
           persist: persist,
           ids: newClinicId,
-        );
+        ) {
+    activeClinicalCatalog = _catalog;
+  }
 
   final ClinicApi api;
   final MockClinicRepository _local;
+  final CatalogStore _catalogStore;
   final _failures = StreamController<String>.broadcast();
   final _notices = StreamController<ApiFeedback>.broadcast();
   var _token = '';
@@ -30,11 +39,16 @@ class ApiClinicRepository implements ClinicRepository {
   Future<void> _tail = Future<void>.value();
   Future<String?> Function()? _refreshToken;
   Future<String?>? _refreshInFlight;
+  ClinicalCatalog _catalog;
+  void Function(ClinicalCatalog catalog)? _applyCatalog;
 
   Future<void> get settled => _tail;
 
   @override
   ClinicSnapshot get current => _local.current;
+
+  @override
+  ClinicalCatalog get catalog => _catalog;
 
   @override
   List<String> get delayNoticeFollowUpIds => _local.delayNoticeFollowUpIds;
@@ -51,6 +65,12 @@ class ApiClinicRepository implements ClinicRepository {
   @override
   void bindUnauthorized(Future<String?> Function() refresh) {
     _refreshToken = refresh;
+  }
+
+  @override
+  void bindCatalog(void Function(ClinicalCatalog catalog) apply) {
+    _applyCatalog = apply;
+    apply(_catalog);
   }
 
   @override
@@ -76,7 +96,27 @@ class ApiClinicRepository implements ClinicRepository {
       final chart = await _authorized(api.fetchChart);
       if (epoch != _epoch) return;
       _applyChart(chart);
+      await _refreshCatalog(epoch);
     });
+  }
+
+  Future<void> _refreshCatalog(int epoch) async {
+    try {
+      final implants = await _authorized(api.fetchImplantCatalog);
+      final grafts = await _authorized(api.fetchGraftCatalog);
+      if (epoch != _epoch) return;
+      final next = clinicalCatalogFromApi(implants: implants, grafts: grafts);
+      _setCatalog(next);
+      await _catalogStore.save(next);
+    } on ClinicApiException {
+      // Mantém cache/bundled; chart já sincronizou.
+    }
+  }
+
+  void _setCatalog(ClinicalCatalog next) {
+    _catalog = next;
+    activeClinicalCatalog = next;
+    _applyCatalog?.call(next);
   }
 
   @override

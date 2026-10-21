@@ -1,3 +1,5 @@
+part 'clinical_catalog.dart';
+
 enum Modality { implante, enxerto, protese }
 
 enum ProcedureSubtype { unitario, protocolo, ponte }
@@ -70,42 +72,6 @@ const chipOrder = <int>[
   31, 32, 33, 34, 35, 36, 37, 38,
 ];
 
-const implantCatalog = <String, List<String>>{
-  'Neodent': ['Drive GM', 'Helix GM', 'Grand Morse'],
-  'Straumann': ['BLX', 'BLT', 'TLX'],
-  'Nobel Biocare': ['NobelActive', 'NobelParallel'],
-};
-
-const implantSizes = <String>[
-  '3.3 × 8 mm',
-  '3.3 × 10 mm',
-  '3.3 × 11.5 mm',
-  '3.3 × 13 mm',
-  '3.5 × 8 mm',
-  '3.5 × 10 mm',
-  '3.5 × 11.5 mm',
-  '3.5 × 13 mm',
-  '3.75 × 8 mm',
-  '3.75 × 10 mm',
-  '3.75 × 11.5 mm',
-  '3.75 × 13 mm',
-  '4.0 × 8 mm',
-  '4.0 × 10 mm',
-  '4.0 × 11.5 mm',
-  '4.0 × 13 mm',
-  '4.3 × 10 mm',
-  '4.3 × 11.5 mm',
-  '4.3 × 13 mm',
-  '4.3 × 16 mm',
-  '4.5 × 8 mm',
-  '4.5 × 10 mm',
-  '4.5 × 13 mm',
-  '5.0 × 8 mm',
-  '5.0 × 10 mm',
-  '5.0 × 11.5 mm',
-  '5.0 × 13 mm',
-];
-
 class ImplantCatalogEntry {
   const ImplantCatalogEntry({
     required this.manufacturer,
@@ -122,99 +88,11 @@ class ImplantCatalogEntry {
   final String anvisa;
 }
 
-/// Referências comerciais do catálogo local (espelho do seed PostgreSQL).
-const implantReferenceCatalog = <ImplantCatalogEntry>[
-  ImplantCatalogEntry(
-    manufacturer: 'Neodent',
-    model: 'Helix GM',
-    reference: '114.224',
-    size: '4.0 × 10 mm',
-    anvisa: '80156920014',
-  ),
-  ImplantCatalogEntry(
-    manufacturer: 'Neodent',
-    model: 'Helix GM',
-    reference: '114.223',
-    size: '3.75 × 10 mm',
-    anvisa: '80156920014',
-  ),
-  ImplantCatalogEntry(
-    manufacturer: 'Neodent',
-    model: 'Drive GM',
-    reference: '110.618',
-    size: '4.0 × 10 mm',
-    anvisa: '80156920011',
-  ),
-  ImplantCatalogEntry(
-    manufacturer: 'Straumann',
-    model: 'BLX',
-    reference: '021.4301',
-    size: '4.0 × 10 mm',
-    anvisa: '10345590025',
-  ),
-  ImplantCatalogEntry(
-    manufacturer: 'Straumann',
-    model: 'BLT',
-    reference: '021.2310',
-    size: '4.0 × 10 mm',
-    anvisa: '10345590018',
-  ),
-  ImplantCatalogEntry(
-    manufacturer: 'Nobel Biocare',
-    model: 'NobelActive',
-    reference: '34130',
-    size: '4.3 × 10 mm',
-    anvisa: '80146540033',
-  ),
-  ImplantCatalogEntry(
-    manufacturer: 'Nobel Biocare',
-    model: 'NobelParallel',
-    reference: '30130',
-    size: '4.3 × 10 mm',
-    anvisa: '80146540041',
-  ),
-];
-
 enum ImplantCatalogLookup {
   filled,
   modelOnly,
   notFound,
   cleared,
-}
-
-List<ImplantCatalogEntry> implantReferencesFor(String manufacturer) {
-  return [
-    for (final entry in implantReferenceCatalog)
-      if (entry.manufacturer == manufacturer) entry,
-  ];
-}
-
-List<String> modelOrReferenceOptions(String manufacturer) {
-  final models = implantCatalog[manufacturer] ?? const <String>[];
-  final references = [
-    for (final entry in implantReferencesFor(manufacturer)) entry.reference,
-  ];
-  return [...models, ...references];
-}
-
-ImplantCatalogEntry? lookupImplantReference(String manufacturer, String reference) {
-  final query = reference.trim().toLowerCase();
-  if (manufacturer.isEmpty || query.isEmpty) return null;
-  final matches = [
-    for (final entry in implantReferenceCatalog)
-      if (entry.manufacturer == manufacturer && entry.reference.toLowerCase() == query) entry,
-  ];
-  if (matches.length == 1) return matches.single;
-  return null;
-}
-
-String? catalogModelName(String manufacturer, String value) {
-  final query = value.trim().toLowerCase();
-  if (query.isEmpty) return null;
-  for (final model in implantCatalog[manufacturer] ?? const <String>[]) {
-    if (model.toLowerCase() == query) return model;
-  }
-  return null;
 }
 
 List<String> withCurrentOption(List<String> options, String current) {
@@ -238,86 +116,10 @@ class GraftProduct {
   final List<String> granulometries;
 }
 
-const graftProducts = <String, List<GraftProduct>>{
-  'Geistlich': [
-    GraftProduct(
-      model: 'Bio-Oss',
-      type: 'Osso bovino desproteinizado',
-      presentations: [GraftPresentation.po],
-      granulometries: ['0,25–1 mm', '1–2 mm'],
-    ),
-    GraftProduct(
-      model: 'Bio-Oss Collagen',
-      type: 'Osso bovino desproteinizado',
-      presentations: [GraftPresentation.bloco],
-    ),
-  ],
-  'Straumann': [
-    GraftProduct(
-      model: 'cerabone',
-      type: 'Osso bovino',
-      presentations: [GraftPresentation.po],
-      granulometries: ['0,5–1 mm', '1–2 mm'],
-    ),
-    GraftProduct(
-      model: 'maxgraft',
-      type: 'Aloenxerto',
-      presentations: [GraftPresentation.bloco, GraftPresentation.po],
-      granulometries: ['0,5–2 mm'],
-    ),
-  ],
-  'Baumer': [
-    GraftProduct(
-      model: 'Ox Bone',
-      type: 'Osso bovino',
-      presentations: [GraftPresentation.bloco, GraftPresentation.po],
-      granulometries: ['0,25–1 mm', '1–2 mm'],
-    ),
-  ],
-};
-
-List<String> graftManufacturers() => graftProducts.keys.toList();
-
-List<GraftProduct> graftProductsOf(String manufacturer) =>
-    graftProducts[manufacturer] ?? const [];
-
-GraftProduct? graftProductOf(String manufacturer, String model) {
-  for (final product in graftProductsOf(manufacturer)) {
-    if (product.model == model) return product;
-  }
-  return null;
-}
-
 GraftMaterialChoice? graftMaterialChoice(GraftOrigin origin, GraftProcessing? processing) {
   if (origin == GraftOrigin.autogeno) return GraftMaterialChoice.autogeno;
   if (processing == GraftProcessing.liofilizado) return GraftMaterialChoice.liofilizado;
   return null;
-}
-
-bool graftCombinationValid(GraftMaterial graft) {
-  if (graft.origin == GraftOrigin.autogeno) {
-    return graft.processing == null &&
-        graft.manufacturer.isEmpty &&
-        graft.model.isEmpty &&
-        graft.productType.isEmpty &&
-        graft.granulometry.isEmpty;
-  }
-  if (graft.presentation == GraftPresentation.bloco && graft.granulometry.isNotEmpty) {
-    return false;
-  }
-  if (graft.processing != GraftProcessing.liofilizado) return graft.donorSite.isEmpty;
-  if (graft.donorSite.isNotEmpty) return false;
-  final product = graftProductOf(graft.manufacturer, graft.model);
-  if (graft.manufacturer.isEmpty || graft.model.isEmpty) return product == null;
-  if (product == null) return false;
-  if (graft.productType.isNotEmpty && graft.productType != product.type) return false;
-  if (graft.presentation != null && !product.presentations.contains(graft.presentation)) {
-    return false;
-  }
-  if (graft.granulometry.isNotEmpty && !product.granulometries.contains(graft.granulometry)) {
-    return false;
-  }
-  return true;
 }
 
 String? sinusLiftIssue({

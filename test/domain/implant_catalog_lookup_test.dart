@@ -10,7 +10,7 @@ void main() {
       ..manufacturedOn = DateTime(2024, 1, 2)
       ..expiresOn = DateTime(2028, 1, 2);
 
-    final result = draft.selectModelOrReference('114.224');
+    final result = draft.selectModelOrReference('114224');
 
     expect(result, ImplantCatalogLookup.filled);
     expect(draft.model, 'Helix GM');
@@ -20,13 +20,16 @@ void main() {
     expect(draft.lot, 'LOTE-1');
     expect(draft.manufacturedOn, DateTime(2024, 1, 2));
     expect(draft.expiresOn, DateTime(2028, 1, 2));
+    expect(lookupImplantReference('Neodent', '114.224')?.model, 'Helix GM');
+    expect(normalizeImplantReferenceKey('109.644'), '109644');
   });
 
   test('modelo do catálogo não inventa tamanho nem ANVISA', () {
     final draft = PieceDraft()
       ..manufacturer = 'Neodent'
       ..size = '5.0 × 13 mm'
-      ..anvisa = 'velho';
+      ..anvisa = 'velho'
+      ..reference = '114.224';
 
     final result = draft.selectModelOrReference('Helix GM');
 
@@ -65,10 +68,20 @@ void main() {
     expect(draft.lot, 'ABC');
   });
 
-  test('opções de busca só listam modelos e referências do fabricante', () {
+  test('listagem só mostra modelos; referência preenche sem aparecer nas opções', () {
     final options = modelOrReferenceOptions('Neodent');
-    expect(options, containsAll(['Helix GM', '114.224', 'Drive GM']));
+    expect(options, containsAll(['Helix GM', 'Drive GM']));
+    expect(options, isNot(contains('114.224')));
     expect(options, isNot(contains('021.4301')));
     expect(modelOrReferenceOptions(''), isEmpty);
+
+    final draft = PieceDraft()..manufacturer = 'Neodent';
+    expect(draft.selectModelOrReference('114.224'), ImplantCatalogLookup.filled);
+    expect(draft.model, 'Helix GM');
+    expect(draft.reference, '114.224');
+
+    final partial = implantReferencesMatching('Neodent', '114');
+    expect(partial.map((e) => e.reference), containsAll(['114.224', '114.223']));
+    expect(implantReferencesMatching('Neodent', '114224').single.reference, '114.224');
   });
 }

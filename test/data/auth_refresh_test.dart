@@ -21,7 +21,8 @@ void main() {
 
     expect(refreshes, 1);
     expect(repository.current.patients.single.name, 'Helena');
-    expect(transport.tokens, ['stale-token', 'fresh-token']);
+    expect(transport.tokens.first, 'stale-token');
+    expect(transport.tokens.skip(1), everyElement('fresh-token'));
   });
 
   test('token vazio restaura sessão via refresh antes da primeira chamada', () async {
@@ -43,7 +44,8 @@ void main() {
 
     expect(refreshes, 1);
     expect(repository.current.patients.single.name, 'Helena');
-    expect(transport.tokens, ['restored-token']);
+    expect(transport.tokens, isNotEmpty);
+    expect(transport.tokens, everyElement('restored-token'));
   });
 
   test('refresh concorrente compartilhado não chama WorkOS duas vezes', () async {
@@ -119,6 +121,9 @@ class _FakeTransport implements ClinicTransport {
     }
     if (method == 'GET' && path == '/v1/chart') {
       return ClinicHttpResponse(statusCode: 200, body: _chart);
+    }
+    if (method == 'GET' && path.startsWith('/v1/catalog/')) {
+      return const ClinicHttpResponse(statusCode: 503, body: {'error': {'message': 'Catálogo indisponível.'}});
     }
     return ClinicHttpResponse(statusCode: 201, body: body);
   }

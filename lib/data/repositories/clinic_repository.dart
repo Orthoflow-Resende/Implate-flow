@@ -11,11 +11,15 @@ abstract class ClinicRepository {
 
   ClinicSnapshot get current;
 
+  ClinicalCatalog get catalog => activeClinicalCatalog;
+
   List<String> get delayNoticeFollowUpIds;
 
   void applyOverdueNotices();
 
   void bindUnauthorized(Future<String?> Function() refresh) {}
+
+  void bindCatalog(void Function(ClinicalCatalog catalog) apply) {}
 
   void signIn({required String name, required String email, String accessToken = ''});
 

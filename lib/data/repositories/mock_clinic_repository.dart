@@ -29,6 +29,9 @@ class MockClinicRepository implements ClinicRepository {
   ClinicSnapshot get current => _snapshot;
 
   @override
+  ClinicalCatalog get catalog => activeClinicalCatalog;
+
+  @override
   List<String> get delayNoticeFollowUpIds =>
       List.unmodifiable(_delayNoticeFollowUpIds);
 
@@ -52,6 +55,9 @@ class MockClinicRepository implements ClinicRepository {
 
   @override
   void bindUnauthorized(Future<String?> Function() refresh) {}
+
+  @override
+  void bindCatalog(void Function(ClinicalCatalog catalog) apply) {}
 
   @override
   Future<void> refresh() async {}

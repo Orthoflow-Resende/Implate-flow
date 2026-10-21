@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'config/app_config.dart';
+import 'data/clinical_catalog_controller.dart';
 import 'data/repositories/api_clinic_repository.dart';
 import 'data/repositories/clinic_repository.dart';
 import 'data/services/clinic_api.dart';
+import 'data/services/local_catalog_store.dart';
 import 'data/services/local_clinic_store.dart';
 import 'data/services/workos_auth.dart';
 import 'domain/clinic_snapshot.dart';
@@ -18,16 +20,23 @@ import 'ui/view_models.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final store = LocalClinicStore();
+  final catalogStore = LocalCatalogStore();
   final loaded = await store.load();
+  final cachedCatalog = await catalogStore.load() ?? bundledClinicalCatalog;
+  final catalogController = ClinicalCatalogController(cachedCatalog);
   final repository = ApiClinicRepository(
     api: ClinicApi(baseUrl: AppConfig.apiBaseUrl),
     initial: _cachedChart(loaded),
+    initialCatalog: cachedCatalog,
     persist: store.save,
+    catalogStore: catalogStore,
   );
+  repository.bindCatalog(catalogController.replace);
   runApp(
     MultiProvider(
       providers: [
         Provider<ClinicRepository>.value(value: repository),
+        ChangeNotifierProvider.value(value: catalogController),
         ChangeNotifierProvider(create: (_) => SessionViewModel(repository, NativeWorkOsAuth())),
       ],
       child: const ImplateApp(),

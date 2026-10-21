@@ -1,12 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:implate_flow/data/repositories/api_clinic_repository.dart';
 import 'package:implate_flow/data/services/clinic_api.dart';
+import 'package:implate_flow/data/services/local_catalog_store.dart';
 import 'package:implate_flow/domain/clinic_snapshot.dart';
 import 'package:implate_flow/domain/models.dart';
 
 void main() {
+  tearDown(() {
+    activeClinicalCatalog = bundledClinicalCatalog;
+  });
+
   test('login carrega o prontuário e o paciente novo segue para a API', () async {
     final transport = _FakeTransport();
+    final catalogStore = MemoryCatalogStore();
     final repository = ApiClinicRepository(
       api: ClinicApi(baseUrl: 'http://127.0.0.1:3000', transport: transport),
       initial: const ClinicSnapshot(
@@ -16,6 +22,7 @@ void main() {
         procedures: [],
         sequence: 0,
       ),
+      catalogStore: catalogStore,
     );
 
     repository.signIn(name: 'Ana Costa', email: 'ana@example.com', accessToken: 'token');
@@ -24,6 +31,12 @@ void main() {
     expect(repository.current.signedIn, isTrue);
     expect(repository.current.patients.single.name, 'Helena');
     expect(repository.current.profile.cro, 'RJ 12345');
+    expect(repository.catalog.lookupImplantReference('Neodent', '114.224')?.model, 'Helix GM');
+    expect(catalogStore.value?.graftManufacturers(), ['Geistlich']);
+    expect(
+      transport.calls.where((call) => call.path == '/v1/catalog/implants'),
+      isNotEmpty,
+    );
 
     final created = repository.createPatient(
       name: 'João Lima',
@@ -51,6 +64,7 @@ void main() {
         procedures: [],
         sequence: 0,
       ),
+      catalogStore: MemoryCatalogStore(),
     );
     final errors = <String>[];
     repository.syncErrors.listen(errors.add);
@@ -77,6 +91,12 @@ class _FakeTransport implements ClinicTransport {
     calls.add((method: method, path: path, body: body, token: token));
     if (method == 'GET' && path == '/v1/chart') {
       return ClinicHttpResponse(statusCode: 200, body: _chart);
+    }
+    if (method == 'GET' && path == '/v1/catalog/implants') {
+      return const ClinicHttpResponse(statusCode: 200, body: _implantCatalog);
+    }
+    if (method == 'GET' && path == '/v1/catalog/grafts') {
+      return const ClinicHttpResponse(statusCode: 200, body: _graftCatalog);
     }
     if (rejectPatients && method == 'POST' && path == '/v1/patients') {
       return const ClinicHttpResponse(
@@ -121,4 +141,46 @@ const _chart = {
     },
   ],
   'procedures': <Map<String, Object?>>[],
+};
+
+const _implantCatalog = {
+  'manufacturers': [
+    {
+      'id': 'm1',
+      'name': 'Neodent',
+      'models': [
+        {'id': 'md1', 'name': 'Helix GM'},
+      ],
+      'references': [
+        {
+          'id': 'r1',
+          'reference': '114.224',
+          'model': 'Helix GM',
+          'size': '4.0 × 10 mm',
+          'anvisa': '80156920014',
+        },
+      ],
+    },
+  ],
+  'sizes': [
+    {'id': 's1', 'label': '4.0 × 10 mm'},
+  ],
+};
+
+const _graftCatalog = {
+  'manufacturers': [
+    {
+      'id': 'g1',
+      'name': 'Geistlich',
+      'models': [
+        {
+          'id': 'gm1',
+          'name': 'Bio-Oss',
+          'product_type': 'Osso bovino desproteinizado',
+          'presentations': ['po'],
+          'granulometries': ['0,25–1 mm'],
+        },
+      ],
+    },
+  ],
 };

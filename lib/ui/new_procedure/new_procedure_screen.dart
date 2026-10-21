@@ -3,12 +3,14 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../domain/models.dart';
+import '../core/catalog_scope.dart';
 import '../core/layout.dart';
 import '../core/mouth_chart.dart';
 import '../core/preset_dropdown.dart';
 import '../graft/graft_form.dart';
 import '../patients/preexisting_implant_sheet.dart';
 import 'new_procedure_viewmodel.dart';
+
 
 class NewProcedureScreen extends StatelessWidget {
   const NewProcedureScreen({super.key});
@@ -415,6 +417,7 @@ class _ToothCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    watchClinicalCatalog(context);
     final draft = viewModel.drafts[tooth]!;
     final modality = viewModel.modality!;
     final linked = viewModel.isProsthesis ? viewModel.linkedImplantsForTooth(tooth) : const <InstalledImplant>[];
@@ -517,6 +520,7 @@ class _ManufacturerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    watchClinicalCatalog(context);
     final draft = viewModel.drafts[tooth]!;
     return PresetDropdown(
       label: 'Fabricante',
@@ -541,14 +545,15 @@ class _ModelOrReferenceField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    watchClinicalCatalog(context);
     final draft = viewModel.drafts[tooth]!;
-    final options = modelOrReferenceOptions(draft.manufacturer);
-    final display = draft.model.isNotEmpty ? draft.model : draft.reference;
     return PresetDropdown(
-      label: 'Modelo ou referência',
-      value: display,
-      options: options,
+      label: 'Modelo',
+      value: draft.model,
+      options: modelOrReferenceOptions(draft.manufacturer),
+      hintText: 'Buscar modelo ou referência',
       enabled: draft.manufacturer.isNotEmpty,
+      latentEntriesForQuery: (query) => implantReferenceMenuEntries(draft.manufacturer, query),
       onChanged: (value) {
         late final ImplantCatalogLookup result;
         viewModel.updateDraft(tooth, (item) {

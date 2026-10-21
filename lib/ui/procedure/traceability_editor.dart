@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models.dart';
+import '../core/catalog_scope.dart';
 import '../core/layout.dart';
 import '../core/preset_dropdown.dart';
 import '../graft/graft_form.dart';
@@ -185,6 +186,7 @@ class _SiteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    watchClinicalCatalog(context);
     final pieceLine = [draft.manufacturer, draft.model].where((part) => part.isNotEmpty).join(' ');
     return AppCollapseCard(
       title: 'Dente ${site.fdi}',
@@ -205,10 +207,12 @@ class _SiteCard extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               PresetDropdown(
-                label: 'Modelo ou referência',
-                value: draft.model.isNotEmpty ? draft.model : draft.reference,
+                label: 'Modelo',
+                value: draft.model,
                 options: modelOrReferenceOptions(draft.manufacturer),
+                hintText: 'Buscar modelo ou referência',
                 enabled: draft.manufacturer.isNotEmpty,
+                latentEntriesForQuery: (query) => implantReferenceMenuEntries(draft.manufacturer, query),
                 onChanged: (value) {
                   final result = draft.selectModelOrReference(value);
                   onChanged();

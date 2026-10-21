@@ -44,6 +44,14 @@ class ClinicApi {
     return _object(await _send('GET', '/v1/chart', token: token));
   }
 
+  Future<Map<String, dynamic>> fetchImplantCatalog(String token) async {
+    return _object(await _send('GET', '/v1/catalog/implants', token: token));
+  }
+
+  Future<Map<String, dynamic>> fetchGraftCatalog(String token) async {
+    return _object(await _send('GET', '/v1/catalog/grafts', token: token));
+  }
+
   Future<void> createPatient(String token, Patient patient) async {
     await _send('POST', '/v1/patients', token: token, body: _patientBody(patient));
     await _send(

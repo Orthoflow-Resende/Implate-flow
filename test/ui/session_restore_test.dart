@@ -39,7 +39,8 @@ void main() {
     expect(session.signedIn, isTrue);
     expect(auth.currentIdentityCalls, 1);
     expect(repository.current.profile.name, 'Ana Costa');
-    expect(transport.tokens, ['restored-token']);
+    expect(transport.tokens, isNotEmpty);
+    expect(transport.tokens, everyElement('restored-token'));
   });
 
   test('401 após restore usa currentIdentity de novo', () async {
@@ -129,6 +130,9 @@ class _FakeTransport implements ClinicTransport {
     }
     if (method == 'GET' && path == '/v1/chart') {
       return ClinicHttpResponse(statusCode: 200, body: _chart);
+    }
+    if (method == 'GET' && path.startsWith('/v1/catalog/')) {
+      return const ClinicHttpResponse(statusCode: 503, body: {'error': {'message': 'Catálogo indisponível.'}});
     }
     return ClinicHttpResponse(statusCode: 201, body: body);
   }
